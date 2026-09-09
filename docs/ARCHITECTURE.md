@@ -66,6 +66,75 @@ HIGH confidence on a package describes lock metadata evidence.
 
 ## Closeout evidence — 2026-09-08
 
+### Input provenance follow-up — 2026-09-09
+
+The retrieval layer extracts only root `pyproject.toml` and `poetry.lock` from
+the commit-pinned archive. The Python resolver requires both nonempty files.
+`parsePyproject` supplies `[tool.poetry].name` and main, legacy development,
+and Poetry group dependency declarations. `parsePoetryLock` supplies package
+versions and package-to-package dependency declarations. Direct edges record
+`pyproject.toml + poetry.lock`; package-version evidence records `poetry.lock`.
+The package source label never implied that the manifest was ignored.
+
+Fixed reporting gaps: application source/confidence and the two input filenames
+now survive Neo4j persistence; status polling includes the commit SHA. Mixed
+`[project]` dependencies, optional dependencies or dynamic metadata, conflicting
+application names, and non-Poetry dependency groups return `UNSUPPORTED_INPUT`.
+Unknown dependency fields/types and git/path/URL declarations omit the affected
+relationship and explain why. Invalid TOML also returns `UNSUPPORTED_INPUT`.
+Simple exact numeric release mismatches omit the relationship as inconsistent.
+Version ranges and other constraint forms remain name-matched evidence and now
+explicitly mark the result incomplete because compatibility is not verified.
+This does not introduce a Poetry solver or change metadata confidence scores.
+Lock content-hash/freshness verification is still unimplemented and disclosed.
+
+The UI's “Supported inputs and scan provenance” disclosure is available at all
+screen widths. It lists recorded root files, commit and application identity,
+explains file responsibilities and limitations, and distinguishes package-version
+evidence from direct declarations (including group and constraint). Older scans
+without recorded input files request a new scan instead of inventing provenance.
+
+Controlled regression: `TestManifestChangesWithIdenticalLock` reads the original
+`fixtures/python/chain/pyproject.toml` and the alternative
+`fixtures/python/provenance/pyproject.toml` against the **same bytes** from
+`fixtures/python/chain/poetry.lock`. Both retain `a@1.0.0`, `b@2.0.0` and `a -> b`.
+The application changes from `chain` to `changed-application`, and its direct edge
+changes from `app -> a` to `app -> b`. Direct flags change accordingly. A tox.ini
+entry in the simulated archive has no effect. The live database test also verifies
+the changed persisted path and absence of an application path to the removed
+direct dependency; GitHub archive responses alone are simulated in these tests.
+
+Passed backend `go test ./...`, frontend TypeScript checking, Docker production
+build, and `PHASE1_INTEGRATION=1 go test ./tests -run TestDatabaseWorkflow -v
+-count=1` in a temporary Go container on the Compose network. The initial localhost
+database attempt failed authentication; the Compose-network run using `.env`
+passed. Test cleanup removes only its generated schema and scan graph records.
+
+Fresh real GitHub ingestion used
+`https://github.com/Hasenpfote/python-poetry-example`, scan
+`b1a39eb6-6948-4ef5-8a35-04476ef1a4a6`, commit
+`f0e6e6b09c0090728fd1edbb09ee3f39fd1e3b9b`. It completed with 48 nodes, 75 edges,
+12 direct declarations and 123 limitations (including unverified version
+compatibility). Persisted application evidence records both root input files
+and source `pyproject.toml`.
+
+Chromium regression passed against that saved scan, replaying only creation
+responses to open it and making real status/graph/package/path GET requests.
+It checks recorded filenames and commit, the tox scope notice, separate inspector
+evidence labels, and all graph controls, route highlighting, stable selection,
+element preservation and responsive inspector widths (1000/760/390px). Opening
+the provenance panel initially exposed stale canvas pointer coordinates; observing
+page resizing fixed it and the rerun passed without browser errors.
+
+`tox.ini` parsing remains outside Phase 1. Separate tox analysis would require
+approved input retrieval/parsing, explicit tox version and environment/factor
+selection, handling inheritance/substitutions and referenced requirements or
+constraints files, an environment-scoped dependency model and UI, and a policy
+for mapping environment declarations to exact versions when Poetry's lock does
+not cover them. It must keep test-environment dependencies distinct from
+application dependencies and preserve the no-repository-code-execution rule.
+The presence of the `tox` package in poetry.lock does not describe tox environments.
+
 The automated controlled fixtures and the live public GitHub run are different
 verification layers. No controlled public fixture URL was supplied during this
 session. The controlled cases use checked-in fixtures and simulated GitHub HTTP
@@ -179,4 +248,3 @@ not claimed as verified. Synthetic tests cover injected worker/persistence error
 Five live scan records (three completed and two failed) were retained as evidence.
 Existing user files and the user's blueprint edits were preserved. Phase 2,
 vulnerability enrichment, scoring and simulation remain unimplemented.
-

@@ -143,8 +143,12 @@ func TestDatabaseWorkflow(t *testing.T) {
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/graph", nil, 409)
 	process(map[string][]byte{"pyproject.toml": fixture(t, "chain/pyproject.toml"), "poetry.lock": fixture(t, "chain/poetry.lock")})
 	completed := decodeScan(t, apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID, nil, 200))
-	if completed.Status != "COMPLETED" || completed.CommitSHA != fixtureSHA || completed.Incomplete {
+	if completed.Status != "COMPLETED" || completed.CommitSHA != fixtureSHA || !completed.Incomplete || !strings.Contains(strings.Join(completed.Limitations, " "), "Version constraint compatibility is unverified") {
 		t.Fatalf("completion: %+v", completed)
+	}
+	statusScan := decodeScan(t, apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/status", nil, 200))
+	if statusScan.CommitSHA != fixtureSHA {
+		t.Fatal("polling response lost repository provenance")
 	}
 	var topology struct {
 		Nodes []map[string]any
@@ -165,6 +169,23 @@ func TestDatabaseWorkflow(t *testing.T) {
 	}
 	if len(paths.Paths) != 1 || strings.Join(paths.Paths[0], " -> ") != "app:chain -> a@1.0.0 -> b@2.0.0" {
 		t.Fatalf("wrong paths: %+v", paths)
+	}
+	changed := enqueue("provenance")
+	process(map[string][]byte{"pyproject.toml": fixture(t, "provenance/pyproject.toml"), "poetry.lock": fixture(t, "chain/poetry.lock")})
+	provenance := string(apiRequest(t, handler, "GET", "/api/v1/scans/"+changed.ID+"/graph", nil, 200))
+	for _, evidence := range []string{"input_files", "pyproject.toml", "poetry.lock", "app:changed-application", "a@1.0.0", "b@2.0.0"} {
+		if !strings.Contains(provenance, evidence) {
+			t.Fatalf("missing persisted evidence %s: %s", evidence, provenance)
+		}
+	}
+	if err = json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+changed.ID+"/packages/b@2.0.0/paths", nil, 200), &paths); err != nil {
+		t.Fatal(err)
+	}
+	if len(paths.Paths) != 1 || strings.Join(paths.Paths[0], " -> ") != "app:changed-application -> b@2.0.0" {
+		t.Fatalf("manifest change not persisted: %+v", paths)
+	}
+	if err = json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+changed.ID+"/packages/a@1.0.0/paths", nil, 200), &paths); err != nil || len(paths.Paths) != 0 {
+		t.Fatalf("removed direct declaration still reachable: %+v %v", paths, err)
 	}
 	second := enqueue("other")
 	process(map[string][]byte{"pyproject.toml": fixture(t, "chain/pyproject.toml"), "poetry.lock": bytesReplace(fixture(t, "chain/poetry.lock"), "2.0.0", "3.0.0")})

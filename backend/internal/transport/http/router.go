@@ -75,7 +75,7 @@ func Router(projects service.ProjectService, scans service.ScanService, graph se
 			notFound(w, e)
 			return
 		}
-		respond(w, 200, map[string]any{"id": x.ID, "status": x.Status, "stage": x.Stage, "progress": x.Progress, "error_code": x.ErrorCode, "error_message": x.ErrorMessage, "incomplete": x.Incomplete, "limitations": x.Limitations})
+		respond(w, 200, map[string]any{"id": x.ID, "commit_sha": x.CommitSHA, "status": x.Status, "stage": x.Stage, "progress": x.Progress, "error_code": x.ErrorCode, "error_message": x.ErrorMessage, "incomplete": x.Incomplete, "limitations": x.Limitations})
 	})
 	r.Get("/api/v1/scans/{id}/graph", func(w http.ResponseWriter, q *http.Request) {
 		v, e := graph.GetGraph(q.Context(), chi.URLParam(q, "id"))

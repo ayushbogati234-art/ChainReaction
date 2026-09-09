@@ -16,7 +16,7 @@ const scanID = process.env.TEST_SCAN_ID || '5284dce3-a714-4f11-91e6-bb8ad93112a5
   const graph=await get('/api/v1/scans/'+scanID+'/graph');
   await page.route('**/api/v1/**',async route=>{
    if(route.request().method()!=='POST') return route.continue();
-   const body=route.request().url().endsWith('/projects')?{id:scan.project_id}:scan;
+   const body=route.request().url().endsWith('/projects')?{id:scan.project_id}:{...scan,status:'QUEUED',stage:'QUEUED',commit_sha:''};
    await route.fulfill({status:200,json:body});
   });
   await page.goto(process.env.TEST_FRONTEND_URL || 'http://localhost:3000');
@@ -24,6 +24,17 @@ const scanID = process.env.TEST_SCAN_ID || '5284dce3-a714-4f11-91e6-bb8ad93112a5
   await page.getByRole('button',{name:'Start scan',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('.graph-canvas')?._cyreg?.cy?.nodes().length>0);
   const host=page.locator('.graph-canvas');
+  const evidence=page.locator('details').filter({has:page.locator('summary',{hasText:'Supported inputs and scan provenance'})}).first();
+  await evidence.locator('summary').first().click();
+  const evidenceText=await evidence.innerText();
+  assert.match(evidenceText,/tox.ini.*not parsed/);
+  assert.match(evidenceText,/Direct dependency declarations and constraints come from pyproject.toml/);
+  const application=graph.nodes.find(n=>n.id.startsWith('app:'));
+  if(application.input_files?.length) {
+   for(const file of application.input_files) assert.ok(evidenceText.includes(file+' (repository root)'));
+   assert.ok(evidenceText.includes(scan.commit_sha));
+  } else assert.match(evidenceText,/predates recorded file provenance/);
+  await evidence.locator('summary').first().click();
   const state=()=>host.evaluate(el=>{const cy=el._cyreg.cy;return {zoom:cy.zoom(),pan:cy.pan(),positions:cy.nodes().map(n=>({id:n.id(),p:n.position()}))};});
   const elements=()=>host.evaluate(el=>{const cy=el._cyreg.cy;return {nodes:cy.nodes().map(n=>n.id()).sort(),edges:cy.edges().map(e=>[e.source().id(),e.target().id()].join(' -> ')).sort()};});
   const expected={nodes:graph.nodes.map(n=>n.id).sort(),edges:graph.edges.map(e=>[e.source,e.target].join(' -> ')).sort()};
@@ -54,6 +65,8 @@ const scanID = process.env.TEST_SCAN_ID || '5284dce3-a714-4f11-91e6-bb8ad93112a5
   const before=await state();
   await page.locator('.package-choice').filter({hasText:/^pytest@/}).click();
   await page.locator('.inspector .path').first().waitFor();
+  assert.match(await page.locator('.inspector').innerText(),/Package-version evidence: poetry.lock/);
+  assert.match(await page.locator('.inspector').innerText(),/Direct declaration: pyproject.toml/);
   assert.deepEqual(await state(),before,'inspection changed positions/viewport');
   assert.ok(await host.evaluate(el=>{const cy=el._cyreg.cy,n=cy.nodes('.is-focused');return n.length===1 && n.closedNeighborhood().every(e=>!e.hasClass('is-dimmed')) && cy.elements('.is-dimmed').length>0;}));
   await page.locator('.inspector .path').last().click();

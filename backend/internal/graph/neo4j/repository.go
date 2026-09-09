@@ -20,7 +20,7 @@ func (r Repository) Write(ctx context.Context, scanID string, g domain.Graph) er
 		if e != nil {
 			return nil, e
 		}
-		_, e = tx.Run(ctx, "CREATE (:Application {id:$id, scan_id:$scan, name:$name, path:'.', ecosystem:'Python'})", map[string]any{"id": g.Application.ID, "scan": scanID, "name": g.Application.Name})
+		_, e = tx.Run(ctx, "CREATE (:Application {id:$id, scan_id:$scan, name:$name, path:'.', ecosystem:'Python', source:$source, confidence:$confidence, input_files:$input_files})", map[string]any{"id": g.Application.ID, "scan": scanID, "name": g.Application.Name, "source": g.Application.Source, "confidence": string(g.Application.Confidence), "input_files": g.InputFiles})
 		if e != nil {
 			return nil, e
 		}

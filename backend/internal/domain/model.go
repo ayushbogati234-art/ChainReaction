@@ -25,6 +25,7 @@ type Edge struct {
 	Marker, Extras, Group, Source, Confidence string
 }
 type Graph struct {
+	InputFiles  []string
 	Application Package
 	Packages    []Package
 	Edges       []Edge

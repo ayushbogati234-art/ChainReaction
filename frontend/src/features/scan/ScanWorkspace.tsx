@@ -4,6 +4,7 @@ import { DependencyGraph } from "../../components/graph/DependencyGraph";
 import graphStyles from "../../components/graph/GraphWorkspace.module.css";
 import { request } from "../../lib/api/client";
 import type { Scan, GraphData, PackageDetail, Paths } from "../../types/scan";
+import { InputEvidence } from "./InputEvidence";
 
 export default function ScanWorkspace() {
  const [url,setURL]=useState("");
@@ -56,6 +57,7 @@ export default function ScanWorkspace() {
    <form onSubmit={start}><label htmlFor="repo">Public GitHub repository<input id="repo" required value={url} onChange={e=>setURL(e.target.value)} placeholder="https://github.com/owner/repository"/></label><button disabled={submitting || running}>Start scan</button></form>
    {error && <p role="alert" className="failure">{error}</p>}
    {scan && <div role="status" className={scan.status==="FAILED"?"failure":"progress"}><b>{scan.stage}</b><span>{scan.progress}%</span>{scan.error_message && <p>{scan.error_message}</p>}</div>}
+   <InputEvidence scan={scan} graph={graph}/>
   </section>
   <section className={"workspace " + graphStyles.workspace}>
    <aside><h2>Scan evidence</h2><p>Root Poetry project only.</p><p>Edges point from dependent to dependency.</p>
@@ -64,7 +66,10 @@ export default function ScanWorkspace() {
    </aside>
    <DependencyGraph graph={graph} selectedID={selectedID} activePath={activePath} onSelect={select}/>
    <aside className={"inspector " + graphStyles.inspector}><h2>Package inspector</h2>
-    {selected ? <><h3>{selected.package.name}@{selected.package.version}</h3><p>Confidence: {selected.package.confidence} (metadata evidence)</p><p>Source: {selected.package.source}</p>{selected.package.marker && <p>Condition: {selected.package.marker}</p>}<p>{selected.dependencies.length} dependencies · {selected.dependents.length} dependents</p>
+    {selected ? <><h3>{selected.package.name}@{selected.package.version}</h3><p>Confidence: {selected.package.confidence} (metadata evidence)</p><p>Package-version evidence: {selected.package.source}</p>
+     {graph?.edges.filter(edge=>edge.direct && edge.target===selected.package.id).map((edge,index)=><p key={index}>Direct declaration: pyproject.toml · group {edge.group || "main"} · constraint <code>{edge.constraint || "unspecified"}</code>. Locked version: poetry.lock.</p>)}
+     {!graph?.edges.some(edge=>edge.direct && edge.target===selected.package.id) && <p>No supported direct application relationship was established. This package is present in the lockfile; inspect paths and scan limitations for context.</p>}
+     {selected.package.marker && <p>Condition: {selected.package.marker}</p>}<p>{selected.dependencies.length} dependencies · {selected.dependents.length} dependents</p>
      <h3>Representative paths</h3>{paths?.paths.map((path,i)=><button type="button" key={i} className={"path " + graphStyles.path} onClick={()=>setActivePath(activePath===path?undefined:path)} aria-pressed={activePath===path}>{path.join(" -> ")}</button>)}{paths?.paths.length===0 && <p>No application path was established.</p>}{paths?.truncated && <p>Path results capped at {paths.limit}; more paths exist.</p>}
     </> : <p>Select a package node to see its evidence and paths.</p>}
    </aside>

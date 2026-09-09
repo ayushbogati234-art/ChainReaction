@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -80,9 +81,51 @@ func TestControlledIngestionAndResolution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if g.Incomplete || len(g.Packages) != 2 || len(g.Edges) != 2 {
+	if !g.Incomplete || !strings.Contains(strings.Join(g.Limitations, " "), "Version constraint compatibility is unverified") || len(g.Packages) != 2 || len(g.Edges) != 2 {
 		t.Fatalf("unexpected controlled graph: %+v", g)
 	}
+}
+func TestManifestChangesWithIdenticalLock(t *testing.T) {
+	lock := fixture(t, "chain/poetry.lock")
+	resolve := func(manifest string) domain.Graph {
+		t.Helper()
+		client := fixtureClient(t, map[string][]byte{"pyproject.toml": fixture(t, manifest), "poetry.lock": lock, "tox.ini": []byte("[testenv]\ndeps = ignored-tox-package==9\n")})
+		files, err := client.Fetch(context.Background(), "https://github.com/controlled/provenance")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(files.PoetryLock, lock) {
+			t.Fatal("lock changed during retrieval")
+		}
+		g, err := (python.Resolver{}).Resolve(python.Input{Pyproject: files.Pyproject, PoetryLock: files.PoetryLock})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return g
+	}
+	before, after := resolve("chain/pyproject.toml"), resolve("provenance/pyproject.toml")
+	if before.Application.ID != "app:chain" || after.Application.ID != "app:changed-application" || after.Application.Source != "pyproject.toml" {
+		t.Fatal("manifest identity not used")
+	}
+	if !reflect.DeepEqual(after.InputFiles, []string{"pyproject.toml", "poetry.lock"}) {
+		t.Fatal("incorrect input provenance")
+	}
+	for i := range before.Packages {
+		if before.Packages[i].Direct == after.Packages[i].Direct {
+			t.Fatal("directness did not change")
+		}
+		before.Packages[i].Direct, after.Packages[i].Direct = false, false
+	}
+	if !reflect.DeepEqual(before.Packages, after.Packages) {
+		t.Fatal("unchanged lock produced different package evidence")
+	}
+	if !reflect.DeepEqual(before.Edges[0], after.Edges[0]) {
+		t.Fatal("lock dependency evidence changed")
+	}
+	if len(after.Edges) != 2 || before.Edges[1].To != "a@1.0.0" || after.Edges[1].From != "app:changed-application" || after.Edges[1].To != "b@2.0.0" || after.Edges[1].Constraint != "2.0.0" || after.Edges[1].Source != "pyproject.toml + poetry.lock" {
+		t.Fatalf("declaration change not reflected: %+v", after.Edges)
+	}
+	t.Log("same lock: a@1.0.0 and b@2.0.0 retained; a -> b retained; application identity changed; direct app -> a replaced by app -> b; tox.ini ignored")
 }
 func TestUnsupportedAndRetrievalFailures(t *testing.T) {
 	for _, url := range []string{"http://github.com/a/b", "https://example.com/a/b", "https://user@github.com/a/b", "https://github.com/a/b?ref=main", "https://github.com/a/..", "https://github.com/a/b/tree/main"} {

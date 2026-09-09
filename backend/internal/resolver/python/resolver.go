@@ -16,6 +16,7 @@ type Resolver struct{}
 
 var _ resolvercontract.Resolver = Resolver{}
 var separators = regexp.MustCompile("[-_.]+")
+var exactRelease = regexp.MustCompile(`^(?:==|=)?([0-9]+(?:\.[0-9]+)*)$`)
 
 func normalize(n string) string { return separators.ReplaceAllString(strings.ToLower(n), "-") }
 func id(n, v string) string     { return normalize(n) + "@" + v }
@@ -53,8 +54,9 @@ func (Resolver) Resolve(in Input) (domain.Graph, error) {
 	if err != nil {
 		return domain.Graph{}, err
 	}
-	g := domain.Graph{Application: domain.Package{ID: "app:" + manifest.Name, Name: manifest.Name, Source: "pyproject.toml", Confidence: domain.ConfidenceHigh}, Packages: []domain.Package{}, Edges: []domain.Edge{}, Limitations: []string{}}
+	g := domain.Graph{InputFiles: []string{"pyproject.toml", "poetry.lock"}, Application: domain.Package{ID: "app:" + manifest.Name, Name: manifest.Name, Source: "pyproject.toml", Confidence: domain.ConfidenceHigh}, Packages: []domain.Package{}, Edges: []domain.Edge{}, Limitations: []string{}}
 	limitation := func(message string) { g.Incomplete = true; g.Limitations = append(g.Limitations, message) }
+	unverifiedConstraints := false
 	byName := map[string][]lockedPackage{}
 	accepted := map[string]bool{}
 	packageIDs := map[string]bool{}
@@ -113,6 +115,28 @@ func (Resolver) Resolve(in Input) (domain.Graph, error) {
 		case string:
 			edge.Constraint = v
 		case map[string]any:
+			for key, value := range v {
+				valid := false
+				switch key {
+				case "version", "markers", "python", "platform", "source", "git", "path", "url":
+					_, valid = value.(string)
+				case "optional":
+					_, valid = value.(bool)
+				case "extras":
+					if items, ok := value.([]any); ok {
+						valid = true
+						for _, item := range items {
+							if _, ok := item.(string); !ok {
+								valid = false
+							}
+						}
+					}
+				}
+				if !valid {
+					limitation("Unsupported dependency field or value " + key + " in " + source + " for " + from + " -> " + name + "; relationship omitted")
+					return
+				}
+			}
 			for _, key := range []string{"git", "path", "url"} {
 				if _, exists := v[key]; exists {
 					limitation("Unsupported " + key + " dependency " + from + " -> " + name + ": " + metadata(v))
@@ -143,6 +167,24 @@ func (Resolver) Resolve(in Input) (domain.Graph, error) {
 			return
 		}
 		target := targets[0]
+		// Check only plain release equality. Full Poetry/PEP 440 constraint
+		// evaluation and lock content-hash validation are outside this parser.
+		constraint := strings.TrimSpace(edge.Constraint)
+		if match := exactRelease.FindStringSubmatch(constraint); match != nil && exactRelease.MatchString(target.Version) {
+			canonical := func(v string) string {
+				parts := strings.Split(v, ".")
+				for len(parts) > 1 && parts[len(parts)-1] == "0" {
+					parts = parts[:len(parts)-1]
+				}
+				return strings.Join(parts, ".")
+			}
+			if canonical(match[1]) != canonical(target.Version) {
+				limitation("Inconsistent metadata: " + source + " declares " + name + " " + constraint + " but poetry.lock records " + target.Version + "; relationship omitted")
+				return
+			}
+		} else if constraint != "*" {
+			unverifiedConstraints = true
+		}
 		edge.To = id(target.Name, target.Version)
 		edge.Marker = markers(parentMarker, declaredMarker, target.Marker, metadata(target.Markers))
 		if edge.Marker != "" || edge.Extras != "" || edge.Optional || (group != "" && group != "main") {
@@ -181,6 +223,9 @@ func (Resolver) Resolve(in Input) (domain.Graph, error) {
 				g.Packages[i].Direct = true
 			}
 		}
+	}
+	if unverifiedConstraints {
+		limitation("Version constraint compatibility is unverified: relationships match declared names to unique lock entries; ranges and non-release versions are retained as evidence, not resolved")
 	}
 	sort.Slice(g.Packages, func(i, j int) bool { return g.Packages[i].ID < g.Packages[j].ID })
 	sort.SliceStable(g.Edges, func(i, j int) bool {

@@ -63,6 +63,10 @@ export function DependencyGraph({ graph, selectedID, activePath, onSelect }: Pro
     setZoom(cy.zoom());
     const observer = new ResizeObserver(() => cy.resize());
     observer.observe(host.current);
+    // Expanding scan evidence moves the canvas without changing its own size.
+    // Refresh Cytoscape's cached pointer coordinates when the page grows too.
+    const page = host.current.closest("main");
+    if (page) observer.observe(page);
     return () => { observer.disconnect(); cy.destroy(); cyRef.current = null; };
     // Only a different graph replaces the Cytoscape instance or starts layout.
   }, [graph]);

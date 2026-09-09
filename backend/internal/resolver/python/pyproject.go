@@ -17,7 +17,9 @@ type poetryManifest struct {
 }
 
 type pyprojectDocument struct {
-	Tool struct {
+	Project          map[string]any `toml:"project"`
+	DependencyGroups map[string]any `toml:"dependency-groups"`
+	Tool             struct {
 		Poetry poetryManifest `toml:"poetry"`
 	} `toml:"tool"`
 }
@@ -25,7 +27,19 @@ type pyprojectDocument struct {
 func parsePyproject(data []byte) (poetryManifest, error) {
 	var document pyprojectDocument
 	if err := toml.Unmarshal(data, &document); err != nil {
-		return poetryManifest{}, fmt.Errorf("invalid pyproject.toml: %w", err)
+		return poetryManifest{}, fmt.Errorf("UNSUPPORTED_INPUT: invalid pyproject.toml: %w", err)
+	}
+	// Do not silently accept a Poetry name while ignoring another declaration format.
+	for _, key := range []string{"dependencies", "optional-dependencies", "dynamic"} {
+		if _, exists := document.Project[key]; exists {
+			return poetryManifest{}, fmt.Errorf("UNSUPPORTED_INPUT: [project].%s is not supported; Phase 1 reads dependency declarations from [tool.poetry] only", key)
+		}
+	}
+	if len(document.DependencyGroups) > 0 {
+		return poetryManifest{}, fmt.Errorf("UNSUPPORTED_INPUT: [dependency-groups] is not supported; use Poetry dependency groups for Phase 1")
+	}
+	if name, exists := document.Project["name"]; exists && name != document.Tool.Poetry.Name {
+		return poetryManifest{}, fmt.Errorf("UNSUPPORTED_INPUT: inconsistent application names in [project] and [tool.poetry]")
 	}
 	if document.Tool.Poetry.Name == "" {
 		return poetryManifest{}, fmt.Errorf("UNSUPPORTED_INPUT: only [tool.poetry] projects are supported in Phase 1")

@@ -27,7 +27,7 @@ type poetryLockDocument struct {
 func parsePoetryLock(data []byte) ([]lockedPackage, error) {
 	var document poetryLockDocument
 	if err := toml.Unmarshal(data, &document); err != nil {
-		return nil, fmt.Errorf("invalid poetry.lock: %w", err)
+		return nil, fmt.Errorf("UNSUPPORTED_INPUT: invalid poetry.lock: %w", err)
 	}
 	if len(document.Packages) == 0 {
 		return nil, fmt.Errorf("UNSUPPORTED_INPUT: poetry.lock contains no package records")
