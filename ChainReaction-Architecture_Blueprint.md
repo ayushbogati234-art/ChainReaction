@@ -1862,25 +1862,29 @@ These may appear only as roadmap ideas.
 
 ---
 
-## 39. Decisions Still To Freeze Before Coding
+## 39. Phase 1 Decisions and Deferred Decisions
 
-Before Codex starts, Ayush + ChatGPT must explicitly decide:
+The following decisions are approved for Phase 1:
 
-- Python input support order and first supported subset: pyproject.toml, requirements.txt, and poetry.lock
-- Python metadata resolution strategy, environment/marker/extras/group handling, and evidence-based confidence rules
-- exact persistence approach for jobs: PostgreSQL table vs Redis
-- first graph library on frontend
+- ChainReaction analyzes Python projects only in Prototype V1. JavaScript/TypeScript/npm and Go/Go Modules are not analyzed ecosystems in this prototype. The Go backend and React/Next.js frontend remain ChainReaction implementation choices, not analyzed ecosystem choices.
+- Start with one application at repository root.
+- Support a paired root `pyproject.toml` and `poetry.lock` first. Standalone `requirements.txt`, manifest-only resolution, multi-application discovery, and other Python inputs return clear unsupported-input errors.
+- Use PostgreSQL for scan/domain records and a PostgreSQL-backed persisted job queue.
+- Use Neo4j for scan-scoped dependency topology and Cytoscape.js for the graph workspace.
+- Use Docker Compose for local development and provide no authentication in this local prototype phase.
+- The scan is metadata-only, pinned to a fetched GitHub commit SHA, and must never execute scanned repository code.
+- Edges are stored as `dependent -> dependency`. Directness, markers, extras, groups, sources, provenance, and evidence limitations are preserved where supplied.
+- Phase 1 does not select a Python/platform/extras environment. Marker-bearing relationships are retained but reported as incomplete rather than claimed active.
+
+The following roadmap decisions remain intentionally deferred:
+
 - exact blast-radius normalization
 - exact structural-criticality formula
 - exploitability source for prototype
 - whether remediation simulation is risk-only first or includes actual version re-resolution
-- first API endpoints to implement
-- first vertical slice
-- demo repository/fixture
-- authentication: likely none for prototype phase 1
 - deployment target
 
-Until those are decided, builder must not start implementation.
+Phase 1 explicitly defers vulnerability enrichment, Blast Radius and structural-criticality formulas, overall Risk Score, compromise/remediation simulation, mitigation ranking, Risk Reduction Potential, systemic dependency detection, extra formats, and multi-application discovery. The product roadmap retains them, but the UI must not display invented scores or simulated functionality.
 
 ---
 

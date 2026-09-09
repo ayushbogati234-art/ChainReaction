@@ -1,0 +1,5 @@
+[tool.poetry]
+name = "unsupported-git"
+[tool.poetry.dependencies]
+python = "^3.11"
+private-lib = { git = "https://github.com/example/private-lib.git" }

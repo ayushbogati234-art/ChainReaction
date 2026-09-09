@@ -1,0 +1,10 @@
+[[package]]
+name = "a"
+version = "1.0.0"
+category = "main"
+[package.dependencies]
+b = "^2.0"
+[[package]]
+name = "b"
+version = "2.0.0"
+category = "main"

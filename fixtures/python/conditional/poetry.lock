@@ -1,0 +1,8 @@
+[[package]]
+name = "conditioned"
+version = "1.0.0"
+[package.dependencies]
+platform-only = { version = "^2", markers = "sys_platform == 'win32'" }
+[[package]]
+name = "platform-only"
+version = "2.0.0"
