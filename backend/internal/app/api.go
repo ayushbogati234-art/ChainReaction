@@ -48,7 +48,7 @@ func RunAPI(ctx context.Context, c config.Config) error {
 		return err
 	}
 	defer closeAll()
-	handler := transport.Router(service.ProjectService{Store: store}, service.ScanService{Store: store}, service.GraphService{Graph: graph, Scans: store})
+	handler := transport.Router(service.ProjectService{Store: store}, service.ScanService{Store: store}, service.GraphService{Graph: graph, Scans: store}, service.FindingService{Store: store, Scans: store})
 	addr := c.HTTPAddr
 	if addr == "" {
 		addr = ":8080"

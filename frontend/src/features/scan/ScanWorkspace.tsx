@@ -5,6 +5,7 @@ import graphStyles from "../../components/graph/GraphWorkspace.module.css";
 import { request } from "../../lib/api/client";
 import type { Scan, GraphData, PackageDetail, Paths } from "../../types/scan";
 import { InputEvidence } from "./InputEvidence";
+import { FindingsPanel } from "../findings/FindingsPanel";
 
 export default function ScanWorkspace() {
  const [url,setURL]=useState("");
@@ -52,12 +53,13 @@ export default function ScanWorkspace() {
   } catch (e) { if (token===selection.current) { setSelectedID(undefined); setError(e instanceof Error ? e.message : "Package request failed."); } }
  },[scan?.id]);
  return <main>
-  <header><strong>ChainReaction</strong><span>Python dependency analysis</span><span className="phase">Phase 1</span></header>
+  <header><strong>ChainReaction</strong><span>Python dependency analysis</span><span className="phase">Phase 2</span></header>
   <section className="input">
    <form onSubmit={start}><label htmlFor="repo">Public GitHub repository<input id="repo" required value={url} onChange={e=>setURL(e.target.value)} placeholder="https://github.com/owner/repository"/></label><button disabled={submitting || running}>Start scan</button></form>
    {error && <p role="alert" className="failure">{error}</p>}
    {scan && <div role="status" className={scan.status==="FAILED"?"failure":"progress"}><b>{scan.stage}</b><span>{scan.progress}%</span>{scan.error_message && <p>{scan.error_message}</p>}</div>}
    <InputEvidence scan={scan} graph={graph}/>
+   {scan?.status==="COMPLETED" && <p>Dependency metadata: {scan.incomplete?"incomplete — see limitations":"processed"} · Vulnerability enrichment: {scan.enrichment_status || "NOT_RUN"}</p>}
   </section>
   <section className={"workspace " + graphStyles.workspace}>
    <aside><h2>Scan evidence</h2><p>Root Poetry project only.</p><p>Edges point from dependent to dependency.</p>
@@ -66,6 +68,7 @@ export default function ScanWorkspace() {
    </aside>
    <DependencyGraph graph={graph} selectedID={selectedID} activePath={activePath} onSelect={select}/>
    <aside className={"inspector " + graphStyles.inspector}><h2>Package inspector</h2>
+    {scan?.status==="COMPLETED" && <FindingsPanel key={scan.id} scanID={scan.id} packageID={selectedID} onSelect={select}/>}
     {selected ? <><h3>{selected.package.name}@{selected.package.version}</h3><p>Confidence: {selected.package.confidence} (metadata evidence)</p><p>Package-version evidence: {selected.package.source}</p>
      {graph?.edges.filter(edge=>edge.direct && edge.target===selected.package.id).map((edge,index)=><p key={index}>Direct declaration: pyproject.toml · group {edge.group || "main"} · constraint <code>{edge.constraint || "unspecified"}</code>. Locked version: poetry.lock.</p>)}
      {!graph?.edges.some(edge=>edge.direct && edge.target===selected.package.id) && <p>No supported direct application relationship was established. This package is present in the lockfile; inspect paths and scan limitations for context.</p>}

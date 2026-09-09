@@ -18,6 +18,7 @@ type Ingestor interface {
 	Fetch(context.Context, string) (github.Files, error)
 }
 type ScanService struct {
+	Findings *FindingService
 	Store    ScanStore
 	Graph    graph.Repository
 	Ingest   Ingestor
@@ -53,6 +54,17 @@ func (s ScanService) RunScan(ctx context.Context, scan domain.Scan, url string) 
 	}
 	if err = s.Graph.Write(ctx, scan.ID, resolved); err != nil {
 		return err
+	}
+	if s.Findings != nil {
+		if err = s.Store.SetStage(ctx, scan.ID, "ENRICHING_VULNERABILITIES", 85); err != nil {
+			return err
+		}
+		if err = s.Findings.Enrich(ctx, scan.ID, resolved.Packages); err != nil {
+			return err
+		}
+		if err = s.Store.SetStage(ctx, scan.ID, "GENERATING_FINDINGS", 95); err != nil {
+			return err
+		}
 	}
 	return s.Store.Complete(ctx, scan.ID, files.CommitSHA, resolved.Incomplete, resolved.Limitations)
 }

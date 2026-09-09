@@ -1,6 +1,6 @@
 # ChainReaction
 
-Phase 1 is a local, graph-first analyzer for public Python Poetry repositories. Give it a public GitHub URL and it records a commit-pinned scan, parses root `pyproject.toml` with its paired `poetry.lock`, persists an isolated dependency graph, and exposes package evidence and representative dependency paths.
+ChainReaction is a local graph-first analyzer for public Python Poetry repositories. Phase 1 provides commit-pinned dependency graphs and paths; Phase 2 adds OSV enrichment and evidence-backed findings with explicit per-package coverage. The full product specification remains the [architecture blueprint](ChainReaction-Architecture_Blueprint.md); track progress in the [feature matrix](docs/FEATURE_MATRIX.md) and [handoff](docs/HANDOFF.md).
 
 ## Run locally
 
@@ -22,7 +22,11 @@ The analysis environment is deliberately non-selective in Phase 1: marker-bearin
 
 Repository ingestion uses GitHub metadata followed by a commit-SHA-pinned archive download. It applies HTTP timeouts, a 10 MiB archive response cap, and a 1 MiB selected-file cap. ChainReaction never clones, installs, builds, imports, or runs scanned repository code, tests, hooks, or scripts.
 
-PostgreSQL stores projects, scans, scan stages, failures, and a `FOR UPDATE SKIP LOCKED` persisted job queue. Neo4j stores application and package nodes with `scan_id` on every node and every query, preventing topology leakage between scans. Vulnerability enrichment, scores, simulations, mitigation, systemic detection, additional formats, and multi-application discovery remain roadmap work and are not presented as implemented features.
+PostgreSQL stores projects, scans, failures, a persisted job queue, package/advisory snapshots and findings. Neo4j stores scan-scoped dependencies and vulnerability relationships. Scores, simulations, mitigation, systemic detection, additional formats and multi-application discovery remain roadmap work.
+
+Phase 2 queries `https://api.osv.dev/v1/query` using validated default-PyPI package identities and exact numeric releases. Other version forms or custom sources are explicitly skipped. No OSV key is required. Requests have an 8-second timeout, a 4 MiB response cap, up to five pages, 200 ms spacing, and a 60-second per-scan enrichment budget. Rate-limit/unavailable responses stop further queries in that scan; coverage records explain what failed or was not queried. Create a new scan to retry; snapshots are not a cross-scan cache.
+
+Provider failures preserve completed dependency processing with degraded/partial enrichment. Dependency incompleteness and provider coverage are separate. Findings describe potential dependency exposure, not confirmed exploitation; provider fixed versions are not verified compatible upgrades. See [Phase 2 evidence and limitations](docs/phases/PHASE_2.md).
 
 ## Test
 

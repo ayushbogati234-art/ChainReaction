@@ -41,7 +41,7 @@ func (r Repository) Write(ctx context.Context, scanID string, g domain.Graph) er
 	return e
 }
 func (r Repository) Graph(ctx context.Context, scan string) (map[string]any, error) {
-	return r.records(ctx, "MATCH (n {scan_id:$scan}) OPTIONAL MATCH (n)-[e:DEPENDS_ON]->(m {scan_id:$scan}) RETURN collect(DISTINCT n{.*}) AS nodes, collect(DISTINCT CASE WHEN e IS NOT NULL THEN {source:n.id,target:m.id,direct:e.direct,marker:e.marker,extras:e.extras,group:e.group,source_evidence:e.source,confidence:e.confidence,constraint:e.constraint,optional:e.optional} END) AS edges", scan)
+	return r.records(ctx, "MATCH (n {scan_id:$scan}) WHERE n:Application OR n:PackageVersion OPTIONAL MATCH (n)-[e:DEPENDS_ON]->(m {scan_id:$scan}) RETURN collect(DISTINCT n{.*}) AS nodes, collect(DISTINCT CASE WHEN e IS NOT NULL THEN {source:n.id,target:m.id,direct:e.direct,marker:e.marker,extras:e.extras,group:e.group,source_evidence:e.source,confidence:e.confidence,constraint:e.constraint,optional:e.optional} END) AS edges", scan)
 }
 func (r Repository) Package(ctx context.Context, scan, id string) (map[string]any, error) {
 	s := r.Driver.NewSession(ctx, neo.SessionConfig{AccessMode: neo.AccessModeRead})

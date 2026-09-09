@@ -1,4 +1,8 @@
-# Phase 1 API
+# Phase 1–2 API
+
+Machine-readable contract: [OpenAPI 3.1](openapi.json). Phase evidence:
+[Phase 1](ARCHITECTURE.md), [Phase 2](phases/PHASE_2.md). Full product coverage
+and deferred API endpoints remain in [FEATURE_MATRIX.md](FEATURE_MATRIX.md).
 
 All endpoints use JSON and require no authentication in the local prototype.
 
@@ -12,6 +16,30 @@ All endpoints use JSON and require no authentication in the local prototype.
 | `GET` | `/api/v1/scans/{id}/graph` | Return scan-scoped nodes and `dependent -> dependency` edges. |
 | `GET` | `/api/v1/scans/{id}/packages/{package_id}` | Inspect package evidence and adjacent packages. |
 | `GET` | `/api/v1/scans/{id}/packages/{package_id}/paths?limit=20` | Return representative simple application-to-package paths. |
+| `GET` | `/api/v1/scans/{id}/findings` | Stored enrichment status, per-package coverage and deduplicated findings. |
+| `GET` | `/api/v1/scans/{id}/findings/{finding_id}` | Scan-scoped advisory, matching evidence, references, fixes and confidence. |
+
+Findings reads require a completed scan (409 otherwise); unknown scans or finding
+IDs return 404, including IDs from another scan. Older scans return NOT_RUN with
+empty evidence lists, not a clean vulnerability result. The local prototype
+returns the complete persisted findings report without server-side pagination.
+
+Scan/status responses expose `enrichment_status` separately from `status` and
+dependency `incomplete`/`limitations`. COMPLETE enrichment means every retained
+package was fully checked by this provider under the supported matching rules;
+it does not imply complete dependency discovery, safety or exploitability.
+PARTIAL indicates incomplete coverage or vulnerability graph persistence;
+DEGRADED means no package coverage succeeded; NOT_RUN covers older/unprocessed
+scans. Per-package states are CHECKED, PARTIAL, FAILED, SKIPPED and UNQUERIED,
+with reasons and successful-response timestamps where available. Empty CHECKED
+results mean no matching advisories returned at scan time only.
+
+Findings expose separate `dependency_confidence`, `vulnerability_match_confidence`
+and conservative minimum `confidence`. Each advisory retains source ID, aliases,
+raw metadata, affected entries, supplied severity/CVSS, references and applicable
+fixed-version evidence. Missing data stays absent/empty. CVSS vectors and labels
+are provider values, not calculated risk. No overall risk/Blast Radius/structural
+score, simulations or ranking endpoints are available.
 
 Errors use `{ "error": { "code": "...", "message": "..." } }`. Relevant codes include `UNSUPPORTED_INPUT`, `INVALID_REPOSITORY_URL`, `GITHUB_DOWNLOAD_ERROR`, and `REPOSITORY_FILE_TOO_LARGE`.
 

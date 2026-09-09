@@ -1,0 +1,16 @@
+{
+ "vulns": [
+  {
+   "id":"GHSA-fixture-0001", "aliases":["CVE-2099-0001"],
+   "summary":"Deterministic test advisory, not a real vulnerability",
+   "severity":[{"type":"CVSS_V3","score":"CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}],
+   "references":[{"type":"ADVISORY","url":"https://example.com/fixture-advisory"}],
+   "affected":[{"package":{"ecosystem":"PyPI","name":"a"},"versions":["1.0.0"],"ranges":[{"type":"ECOSYSTEM","events":[{"introduced":"0"},{"fixed":"2.0.0"}]}]}]
+  },
+  {
+   "id":"PYSEC-fixture-0001", "aliases":["CVE-2099-0001","GHSA-fixture-0001"],
+   "summary":"Alias evidence with intentionally missing severity and fix",
+   "affected":[{"package":{"ecosystem":"PyPI","name":"a"},"versions":["1.0.0"]}]
+  }
+ ]
+}

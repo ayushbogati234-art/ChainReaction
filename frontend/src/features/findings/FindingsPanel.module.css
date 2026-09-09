@@ -1,0 +1,10 @@
+.panel { border-bottom: 1px solid #334155; padding-bottom: 16px; margin-bottom: 16px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.panel button { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 8px; color: #e1eaf3; background: #263747; border: 1px solid #53697e; cursor: pointer; }
+.panel button[aria-pressed="true"] { border-color: #e4a563; }
+.panel button:focus-visible, .panel summary:focus-visible { outline: 2px solid #7dd3fc; }
+.panel pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+.panel a { color: #8acbf0; }
+.panel ul { padding-left: 18px; }
+.panel details { margin: 8px 0; }
+.panel summary { cursor: pointer; }
+.list { max-height: 220px; overflow: auto; }

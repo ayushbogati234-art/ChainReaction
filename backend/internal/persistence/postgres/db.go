@@ -5,19 +5,40 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
+	"github.com/ayushbogati234-art/ChainReaction/backend/migrations"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"io/fs"
 )
-
-const schema = `CREATE TABLE IF NOT EXISTS projects (id UUID PRIMARY KEY, repository_url TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
-CREATE TABLE IF NOT EXISTS scans (id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES projects(id), commit_sha TEXT, status TEXT NOT NULL, stage TEXT NOT NULL, progress INTEGER NOT NULL DEFAULT 0, incomplete BOOLEAN NOT NULL DEFAULT false, limitations JSONB NOT NULL DEFAULT '[]', error_code TEXT, error_message TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ);
-CREATE TABLE IF NOT EXISTS scan_jobs (id BIGSERIAL PRIMARY KEY, scan_id UUID NOT NULL UNIQUE REFERENCES scans(id), status TEXT NOT NULL DEFAULT 'QUEUED', attempts INTEGER NOT NULL DEFAULT 0, available_at TIMESTAMPTZ NOT NULL DEFAULT now(), locked_at TIMESTAMPTZ, completed_at TIMESTAMPTZ, last_error TEXT);`
 
 type Store struct{ DB *pgxpool.Pool }
 
-func (s Store) Migrate(ctx context.Context) error { _, e := s.DB.Exec(ctx, schema); return e }
+func (s Store) Migrate(ctx context.Context) error {
+	tx, err := s.DB.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(7812451)"); err != nil {
+		return err
+	}
+	names, err := fs.Glob(migrations.Files, "*.sql")
+	if err != nil {
+		return err
+	}
+	for _, name := range names {
+		data, err := migrations.Files.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		if _, err = tx.Exec(ctx, string(data)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
 func (s Store) CreateProject(ctx context.Context, url string) (domain.Project, error) {
 	p := domain.Project{ID: uuid.NewString(), RepositoryURL: url}
 	_, e := s.DB.Exec(ctx, "INSERT INTO projects (id,repository_url) VALUES ($1,$2) ON CONFLICT (repository_url) DO NOTHING", p.ID, p.RepositoryURL)
@@ -140,7 +161,7 @@ func (s Store) Fail(ctx context.Context, id, code, msg string) error {
 func (s Store) GetScan(ctx context.Context, id string) (domain.Scan, error) {
 	var x domain.Scan
 	var raw []byte
-	e := s.DB.QueryRow(ctx, "SELECT id,project_id,COALESCE(commit_sha,''),status,stage,progress,incomplete,limitations,error_code,error_message,created_at,started_at,completed_at FROM scans WHERE id=$1", id).Scan(&x.ID, &x.ProjectID, &x.CommitSHA, &x.Status, &x.Stage, &x.Progress, &x.Incomplete, &raw, &x.ErrorCode, &x.ErrorMessage, &x.CreatedAt, &x.StartedAt, &x.CompletedAt)
+	e := s.DB.QueryRow(ctx, "SELECT id,project_id,COALESCE(commit_sha,''),status,stage,progress,incomplete,limitations,error_code,error_message,created_at,started_at,completed_at,COALESCE((SELECT status FROM scan_enrichments WHERE scan_id=scans.id),'NOT_RUN') FROM scans WHERE id=$1", id).Scan(&x.ID, &x.ProjectID, &x.CommitSHA, &x.Status, &x.Stage, &x.Progress, &x.Incomplete, &raw, &x.ErrorCode, &x.ErrorMessage, &x.CreatedAt, &x.StartedAt, &x.CompletedAt, &x.EnrichmentStatus)
 	if e == nil {
 		_ = json.Unmarshal(raw, &x.Limitations)
 	}

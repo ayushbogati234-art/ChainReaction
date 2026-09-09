@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
 	graphstore "github.com/ayushbogati234-art/ChainReaction/backend/internal/graph/neo4j"
@@ -16,6 +19,7 @@ import (
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/resolver/python"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/service"
 	transport "github.com/ayushbogati234-art/ChainReaction/backend/internal/transport/http"
+	"github.com/ayushbogati234-art/ChainReaction/backend/internal/vulnerability/osv"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -100,7 +104,8 @@ func TestDatabaseWorkflow(t *testing.T) {
 		}
 	}()
 	scanService := service.ScanService{Store: store, Graph: graph, Resolver: python.Resolver{}}
-	handler := transport.Router(service.ProjectService{Store: store}, scanService, service.GraphService{Graph: graph, Scans: store})
+	findingService := service.FindingService{Store: store, Scans: store, Graph: graph}
+	handler := transport.Router(service.ProjectService{Store: store}, scanService, service.GraphService{Graph: graph, Scans: store}, findingService)
 	preflight := httptest.NewRecorder()
 	req := httptest.NewRequest("OPTIONS", "/api/v1/projects", nil)
 	handler.ServeHTTP(preflight, req)
@@ -192,6 +197,89 @@ func TestDatabaseWorkflow(t *testing.T) {
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/packages/b@3.0.0", nil, 404)
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+second.ID+"/packages/b@2.0.0", nil, 404)
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+second.ID+"/packages/b@2.0.0/paths", nil, 404)
+	t.Run("Phase2EvidencePersistence", func(t *testing.T) {
+		var down atomic.Bool
+		payload := fixture(t, "vulnerabilities/affected.json")
+		provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if down.Load() {
+				w.Header().Set("Retry-After", "30")
+				w.WriteHeader(429)
+				return
+			}
+			var q struct{ Package struct{ Name string } }
+			json.NewDecoder(r.Body).Decode(&q)
+			if q.Package.Name == "a" {
+				w.Write(payload)
+			} else {
+				w.Write([]byte(`{}`))
+			}
+		}))
+		defer provider.Close()
+		findingService.Provider = osv.Client{BaseURL: provider.URL, Interval: time.Nanosecond}
+		scanService.Findings = &findingService
+		enriched := enqueue("enriched")
+		process(map[string][]byte{"pyproject.toml": fixture(t, "chain/pyproject.toml"), "poetry.lock": fixture(t, "chain/poetry.lock")})
+		status := decodeScan(t, apiRequest(t, handler, "GET", "/api/v1/scans/"+enriched.ID, nil, 200))
+		if status.Status != "COMPLETED" || status.EnrichmentStatus != "COMPLETE" {
+			t.Fatalf("%+v", status)
+		}
+		var result domain.Enrichment
+		if err := json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+enriched.ID+"/findings", nil, 200), &result); err != nil {
+			t.Fatal(err)
+		}
+		if len(result.Findings) != 1 || len(result.Findings[0].Advisories) != 2 || len(result.Checks) != 2 {
+			t.Fatalf("lost evidence %+v", result)
+		}
+		finding := result.Findings[0]
+		apiRequest(t, handler, "GET", "/api/v1/scans/"+enriched.ID+"/findings/"+finding.ID, nil, 200)
+		apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/findings/"+finding.ID, nil, 404)
+		apiRequest(t, handler, "GET", "/api/v1/scans/"+enriched.ID+"/findings/not-a-uuid", nil, 404)
+		resolved, err := (python.Resolver{}).Resolve(python.Input{Pyproject: fixture(t, "chain/pyproject.toml"), PoetryLock: fixture(t, "chain/poetry.lock")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = findingService.Enrich(ctx, enriched.ID, resolved.Packages); err != nil {
+			t.Fatal(err)
+		}
+		for _, table := range []string{"findings", "vulnerability_snapshots"} {
+			var count int
+			if err = db.QueryRow(ctx, "SELECT count(*) FROM "+table+" WHERE scan_id=$1", enriched.ID).Scan(&count); err != nil || count != 1 {
+				t.Fatalf("duplicate %s count=%d %v", table, count, err)
+			}
+		}
+		session := driver.NewSession(ctx, neo.SessionConfig{})
+		defer session.Close(ctx)
+		records, err := session.Run(ctx, "MATCH (p:PackageVersion {scan_id:$scan})-[r:AFFECTED_BY]->(v:Vulnerability {scan_id:$scan}) RETURN count(r)", map[string]any{"scan": enriched.ID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !records.Next(ctx) || records.Record().Values[0].(int64) != 1 {
+			t.Fatal("vulnerability graph duplicate or missing")
+		}
+		var topology struct {
+			Nodes []any
+			Edges []any
+		}
+		json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+enriched.ID+"/graph", nil, 200), &topology)
+		if len(topology.Nodes) != 3 || len(topology.Edges) != 2 {
+			t.Fatal("vulnerability nodes contaminated dependency view")
+		}
+		apiRequest(t, handler, "GET", "/api/v1/scans/"+enriched.ID+"/packages/b@2.0.0/paths", nil, 200)
+		down.Store(true)
+		degraded := enqueue("provider-down")
+		process(map[string][]byte{"pyproject.toml": fixture(t, "chain/pyproject.toml"), "poetry.lock": fixture(t, "chain/poetry.lock")})
+		status = decodeScan(t, apiRequest(t, handler, "GET", "/api/v1/scans/"+degraded.ID, nil, 200))
+		if status.Status != "COMPLETED" || status.EnrichmentStatus != "DEGRADED" {
+			t.Fatalf("provider failure lost topology: %+v", status)
+		}
+		apiRequest(t, handler, "GET", "/api/v1/scans/"+degraded.ID+"/graph", nil, 200)
+		json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+degraded.ID+"/findings", nil, 200), &result)
+		if len(result.Findings) != 0 || result.Checks[0].Status != "FAILED" || result.Checks[1].Status != "UNQUERIED" {
+			t.Fatalf("false clean coverage %+v", result)
+		}
+		scanService.Findings = nil
+		t.Log("P2: alias snapshots, findings APIs, scan isolation, repeat writes, vulnerability graph, paths, degraded provider completion verified")
+	})
 	// Introduce a cross-scan edge deliberately: queries must still exclude it.
 	session := driver.NewSession(ctx, neo.SessionConfig{})
 	result, err := session.Run(ctx, "MATCH (a {scan_id:$first,id:'a@1.0.0'}),(b {scan_id:$second,id:'b@3.0.0'}) CREATE (a)-[:DEPENDS_ON]->(b)", map[string]any{"first": first.ID, "second": second.ID})

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/service"
+	"github.com/ayushbogati234-art/ChainReaction/backend/internal/transport/http/handler"
 	"github.com/go-chi/chi/v5"
 	"net/http"
 	"net/url"
@@ -12,7 +13,7 @@ import (
 	"strings"
 )
 
-func Router(projects service.ProjectService, scans service.ScanService, graph service.GraphService) http.Handler {
+func Router(projects service.ProjectService, scans service.ScanService, graph service.GraphService, findings ...service.FindingService) http.Handler {
 	r := chi.NewRouter()
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, q *http.Request) {
@@ -75,7 +76,7 @@ func Router(projects service.ProjectService, scans service.ScanService, graph se
 			notFound(w, e)
 			return
 		}
-		respond(w, 200, map[string]any{"id": x.ID, "commit_sha": x.CommitSHA, "status": x.Status, "stage": x.Stage, "progress": x.Progress, "error_code": x.ErrorCode, "error_message": x.ErrorMessage, "incomplete": x.Incomplete, "limitations": x.Limitations})
+		respond(w, 200, map[string]any{"id": x.ID, "commit_sha": x.CommitSHA, "status": x.Status, "stage": x.Stage, "progress": x.Progress, "error_code": x.ErrorCode, "error_message": x.ErrorMessage, "incomplete": x.Incomplete, "limitations": x.Limitations, "enrichment_status": x.EnrichmentStatus})
 	})
 	r.Get("/api/v1/scans/{id}/graph", func(w http.ResponseWriter, q *http.Request) {
 		v, e := graph.GetGraph(q.Context(), chi.URLParam(q, "id"))
@@ -117,6 +118,9 @@ func Router(projects service.ProjectService, scans service.ScanService, graph se
 		}
 		respond(w, 200, v)
 	})
+	if len(findings) > 0 {
+		handler.RegisterFindings(r, findings[0])
+	}
 	return r
 }
 func respond(w http.ResponseWriter, status int, v any) {
