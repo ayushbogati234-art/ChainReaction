@@ -71,7 +71,7 @@ const scanID = process.env.TEST_SCAN_ID || '5284dce3-a714-4f11-91e6-bb8ad93112a5
   assert.ok(await host.evaluate(el=>{const cy=el._cyreg.cy,n=cy.nodes('.is-focused');return n.length===1 && n.closedNeighborhood().every(e=>!e.hasClass('is-dimmed')) && cy.elements('.is-dimmed').length>0;}));
   await page.locator('.inspector .path').last().click();
   assert.deepEqual(await state(),before,'path selection changed positions/viewport');
-  const route=(await page.locator('.inspector .path[aria-pressed="true"]').innerText()).split(' -> ');
+  const route=(await page.locator('.inspector .path[aria-pressed="true"]').innerText()).replace(/^Length \d+: /,'').split(' -> ');
   assert.deepEqual(await host.evaluate(el=>el._cyreg.cy.nodes('.is-path').map(n=>n.id()).sort()),[...new Set(route)].sort());
   assert.ok(await host.evaluate((el,route)=>route.slice(1).every((id,i)=>el._cyreg.cy.edges('.is-path').some(e=>e.source().id()===route[i] && e.target().id()===id)),route));
   // Choose a visible background point away from nodes and use a real drag.

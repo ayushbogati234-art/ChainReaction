@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import cytoscape, { type Core } from "cytoscape";
-import { focusPackage, focusPath } from "../../lib/graph/focus";
+import { focusImpact, focusPath } from "../../lib/graph/focus";
 import { runDependencyLayout, INITIAL_GRAPH_ZOOM, MAX_GRAPH_ZOOM, MIN_GRAPH_ZOOM, ZOOM_STEP } from "../../lib/graph/layout";
 import { graphStyle, refreshLabels } from "../../lib/graph/style";
 import type { GraphData } from "../../types/scan";
@@ -12,10 +12,12 @@ type Props = {
   graph?: GraphData;
   selectedID?: string;
   activePath?: string[];
+  affectedIDs?: string[];
+  immediateDependentIDs?: string[];
   onSelect: (id: string) => void;
 };
 
-export function DependencyGraph({ graph, selectedID, activePath, onSelect }: Props) {
+export function DependencyGraph({ graph, selectedID, activePath, affectedIDs, immediateDependentIDs, onSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const cyRef = useRef<Core | null>(null);
   const selectRef = useRef(onSelect);
@@ -76,9 +78,9 @@ export function DependencyGraph({ graph, selectedID, activePath, onSelect }: Pro
     const cy = cyRef.current;
     if (!cy) return;
     if (activePath?.length) focusPath(cy, activePath);
-    else focusPackage(cy, selectedID);
+    else focusImpact(cy, selectedID, affectedIDs, immediateDependentIDs);
     refreshLabels(cy, selectedID);
-  }, [graph, activePath, selectedID]);
+  }, [graph, activePath, selectedID, affectedIDs, immediateDependentIDs]);
 
   const withGraph = (action: (cy: Core) => void) => () => {
     if (cyRef.current) action(cyRef.current);
@@ -113,7 +115,7 @@ export function DependencyGraph({ graph, selectedID, activePath, onSelect }: Pro
     </div>
     <div className={styles.hint}>
       <span>Drag background to pan · Scroll to zoom</span>
-      <span>{activePath?.length ? "Purple: selected path" : selectedID ? "Teal: immediate dependencies and dependents" : "Explore at readable zoom, or Fit graph for an overview"}</span>
+      <span>{activePath?.length ? "Purple: selected path" : selectedID ? "Amber: potentially affected region · Teal: immediate neighborhood" : "Explore at readable zoom, or Fit graph for an overview"}</span>
     </div>
   </section>;
 }

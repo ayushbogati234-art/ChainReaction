@@ -22,6 +22,15 @@ export const graphStyle: StylesheetJson = [
   { selector: "edge.is-related", style: {
     width: 3, "line-color": "#62c2bc", "target-arrow-color": "#62c2bc", opacity: 1, "z-index": 5,
   } },
+  { selector: "node.is-affected", style: {
+    "background-color": "#9a6a28", "border-width": 2, "border-color": "#f1c879", opacity: 1, "text-opacity": 1,
+  } },
+  { selector: "edge.is-affected", style: {
+    width: 3, "line-color": "#d59b48", "target-arrow-color": "#d59b48", opacity: 1, "z-index": 6,
+  } },
+  { selector: "node.is-immediate-impact", style: {
+    "background-color": "#c17d28", "border-width": 3, "border-color": "#ffe0a3", opacity: 1, "text-opacity": 1,
+  } },
   { selector: ".is-path", style: { opacity: 1, "text-opacity": 1, "z-index": 10 } },
   { selector: "node.is-path", style: {
     "background-color": "#8b72c4", "border-width": 2, "border-color": "#d9ccfa",

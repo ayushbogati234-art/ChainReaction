@@ -4,7 +4,7 @@ The repository follows Sections 9 and 10 of
 [the architecture blueprint](../ChainReaction-Architecture_Blueprint.md).
 Python is the only analyzed ecosystem; the Go backend and Next.js frontend are
 implementation technologies. This file preserves Phase 1 closeout evidence.
-Current authorized work is tracked in [Phase 2](phases/PHASE_2.md), the
+Current authorized work is tracked in [Phase 3](phases/PHASE_3.md), the
 [feature matrix](FEATURE_MATRIX.md), and the [handoff](HANDOFF.md).
 
 ## Responsibilities

@@ -1,6 +1,6 @@
 import type { Core } from "cytoscape";
 
-const clearClasses = (cy: Core) => cy.elements().removeClass("is-focused is-related is-path is-dimmed");
+const clearClasses = (cy: Core) => cy.elements().removeClass("is-focused is-related is-affected is-immediate-impact is-path is-dimmed");
 
 export function focusPackage(cy: Core, packageID?: string) {
   clearClasses(cy);
@@ -11,6 +11,16 @@ export function focusPackage(cy: Core, packageID?: string) {
   cy.elements().addClass("is-dimmed");
   related.removeClass("is-dimmed").addClass("is-related");
   selected.removeClass("is-dimmed").addClass("is-focused");
+}
+
+export function focusImpact(cy: Core, packageID?: string, affectedIDs: string[] = [], immediateIDs: string[] = []) {
+  focusPackage(cy, packageID);
+  if (!packageID || !affectedIDs.length) return;
+  const affected = new Set(affectedIDs);
+  cy.nodes().filter(node => affected.has(node.id())).removeClass("is-dimmed").addClass("is-affected");
+  cy.edges().filter(edge => affected.has(edge.source().id()) && affected.has(edge.target().id())).removeClass("is-dimmed").addClass("is-affected");
+  for (const id of immediateIDs) cy.getElementById(id).removeClass("is-dimmed").addClass("is-immediate-impact");
+  cy.getElementById(packageID).removeClass("is-dimmed").addClass("is-focused");
 }
 
 export function focusPath(cy: Core, path?: string[]) {

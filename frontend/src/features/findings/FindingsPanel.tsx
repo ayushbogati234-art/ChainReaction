@@ -3,9 +3,10 @@ import {useEffect,useMemo,useState} from "react";
 import {request} from "../../lib/api/client";
 import {FindingDetail} from "../../components/findings/FindingDetail";
 import type {Enrichment,Finding} from "../../types/finding";
+import type {Impact} from "../../types/scan";
 import styles from "./FindingsPanel.module.css";
 
-export function FindingsPanel({scanID,packageID,onSelect}:{scanID:string;packageID?:string;onSelect:(id:string)=>void}) {
+export function FindingsPanel({scanID,packageID,onSelect,impact}:{scanID:string;packageID?:string;onSelect:(id:string)=>void;impact?:Impact}) {
  const [data,setData]=useState<Enrichment>();const [error,setError]=useState("");
  const [chosen,setChosen]=useState<string>();const [detail,setDetail]=useState<Finding>();
  useEffect(()=>{const abort=new AbortController();setData(undefined);setDetail(undefined);setChosen(undefined);setError("");request<Enrichment>("/api/v1/scans/"+scanID+"/findings",{signal:abort.signal}).then(setData).catch(e=>{if(!abort.signal.aborted)setError(e.message)});return()=>abort.abort();},[scanID]);
@@ -42,7 +43,7 @@ export function FindingsPanel({scanID,packageID,onSelect}:{scanID:string;package
    <p>{data.findings.length} evidence-backed findings. Potential dependency exposure, not confirmed exploitation.</p>
    <div className={styles.list}>{data.findings.map(f=><button type="button" key={f.id} aria-pressed={chosen===f.id} onClick={()=>{setError("");setDetail(undefined);setChosen(f.id);onSelect(f.package_id)}}>{f.name}@{f.version} · {f.advisory_id}</button>)}</div>
    {chosen && !detail && !error && <p>Loading finding details…</p>}
-   {detail && <FindingDetail finding={detail} onPaths={()=>onSelect(detail.package_id)}/>}
+   {detail && <FindingDetail finding={detail} impact={impact?.package_id===detail.package_id?impact:undefined} onPaths={()=>onSelect(detail.package_id)}/>}
   </>}
  </section>;
 }

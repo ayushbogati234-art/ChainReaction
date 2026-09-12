@@ -1,6 +1,6 @@
 # ChainReaction
 
-ChainReaction is a local graph-first analyzer for public Python Poetry repositories. Phase 1 provides commit-pinned dependency graphs and paths; Phase 2 adds OSV enrichment and evidence-backed findings with explicit per-package coverage. The full product specification remains the [architecture blueprint](ChainReaction-Architecture_Blueprint.md); track progress in the [feature matrix](docs/FEATURE_MATRIX.md) and [handoff](docs/HANDOFF.md).
+ChainReaction is a local graph-first analyzer for public Python Poetry repositories. Phase 1 provides commit-pinned dependency graphs and paths; Phase 2 adds OSV enrichment and evidence-backed findings; Phase 3 adds scan-scoped reverse-reachability and bounded path evidence. Phase 3 includes the approved scan-relative Blast Radius score with conservative availability reasons. The full product specification remains the [architecture blueprint](ChainReaction-Architecture_Blueprint.md); track progress in the [feature matrix](docs/FEATURE_MATRIX.md), [Phase 3](docs/phases/PHASE_3.md), and [handoff](docs/HANDOFF.md).
 
 ## Run locally
 

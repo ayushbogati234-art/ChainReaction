@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "ChainReaction local Phase 1–2 API",
-    "version": "0.2.0",
-    "description": "Python Poetry metadata and potential dependency exposure. No scoring or simulation endpoints are implemented."
+    "title": "ChainReaction local Phase 1–3 API",
+    "version": "0.3.0",
+    "description": "Python Poetry metadata, vulnerability evidence, bounded paths and scan-relative structural Blast Radius. No overall Risk Score or simulations."
   },
   "servers": [
     {
@@ -519,7 +519,7 @@
             }
           },
           {
-            "name": "limit",
+            "name": "max_paths",
             "in": "query",
             "schema": {
               "type": "integer",
@@ -527,7 +527,26 @@
               "maximum": 100,
               "default": 20
             },
-            "description": "Invalid values currently fall back to 20."
+            "description": "Maximum representative paths to display. Invalid values return 400. The legacy limit alias is also accepted."
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Restrict representative paths to one application in this scan."
+          },
+          {
+            "name": "max_depth",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            },
+            "description": "Traversal depth safety bound. Bounded results are never labelled exact."
           }
         ],
         "responses": {
@@ -553,6 +572,108 @@
           },
           "404": {
             "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Scan not completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/scans/{id}/packages/{package_id}/impact": {
+      "get": {
+        "summary": "Scan-relative Blast Radius, reverse reachability and bounded path evidence.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "package_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "max_paths",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "max_depth",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Impact"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid filter or safety bound",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown scan/package",
             "content": {
               "application/json": {
                 "schema": {
@@ -910,6 +1031,16 @@
       },
       "Paths": {
         "type": "object",
+        "required": [
+          "paths",
+          "path_lengths",
+          "total_paths",
+          "count_exact",
+          "count_capped",
+          "maximum_depth",
+          "maximum_depth_exact",
+          "evidence_complete"
+        ],
         "properties": {
           "paths": {
             "type": "array",
@@ -927,6 +1058,149 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100
+          },
+          "path_lengths": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "applications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "total_paths": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Exact when count_exact=true; otherwise a lower bound within the stated limits."
+          },
+          "count_exact": {
+            "type": "boolean"
+          },
+          "count_capped": {
+            "type": "boolean"
+          },
+          "count_limit": {
+            "type": "integer",
+            "default": 1000
+          },
+          "maximum_depth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "maximum_depth_exact": {
+            "type": "boolean",
+            "description": "False means maximum observed within bounded results."
+          },
+          "max_depth_limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "depth_limited": {
+            "type": "boolean"
+          },
+          "cycles_detected": {
+            "type": "boolean"
+          },
+          "evidence_confidence": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ]
+          },
+          "evidence_complete": {
+            "type": "boolean"
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Impact": {
+        "type": "object",
+        "required": [
+          "package_id",
+          "downstream_packages",
+          "immediate_dependent_packages",
+          "transitive_dependent_packages",
+          "applications_exposed",
+          "application_ids",
+          "affected_node_ids",
+          "reachability_exact",
+          "evidence_complete",
+          "paths"
+        ],
+        "properties": {
+          "package_id": {
+            "type": "string"
+          },
+          "downstream_packages": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "immediate_dependent_packages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transitive_dependent_packages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "applications_exposed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "application_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "affected_node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reachability_exact": {
+            "type": "boolean",
+            "description": "Exact for the persisted isolated scan snapshot, not a claim that dependency discovery was complete."
+          },
+          "evidence_confidence": {
+            "type": "string",
+            "enum": [
+              "HIGH",
+              "MEDIUM",
+              "LOW"
+            ]
+          },
+          "evidence_complete": {
+            "type": "boolean"
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "paths": {
+            "$ref": "#/components/schemas/Paths"
+          },
+          "blast_radius": {
+            "$ref": "#/components/schemas/BlastRadius"
           }
         }
       },
@@ -1149,6 +1423,81 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Finding"
+            }
+          }
+        }
+      },
+      "BlastRadius": {
+        "type": "object",
+        "required": [
+          "score",
+          "classification",
+          "reason_codes",
+          "total_applications",
+          "total_packages",
+          "components"
+        ],
+        "properties": {
+          "score": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "classification": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "INCOMPLETE_DEPENDENCY_EVIDENCE",
+                "SCAN_PATH_COUNT_CAPPED",
+                "SCAN_PATH_DEPTH_LIMIT",
+                "WORK_LIMIT",
+                "EXECUTION_LIMIT"
+              ]
+            }
+          },
+          "blocking_package": {
+            "type": "string"
+          },
+          "total_applications": {
+            "type": "integer"
+          },
+          "total_packages": {
+            "type": "integer"
+          },
+          "components": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "numerator": {
+                  "type": "number"
+                },
+                "denominator": {
+                  "type": "number"
+                },
+                "value": {
+                  "type": "number"
+                },
+                "weight": {
+                  "type": "number"
+                },
+                "contribution": {
+                  "type": "number"
+                }
+              }
             }
           }
         }

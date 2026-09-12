@@ -3,48 +3,78 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/ayushbogati234-art/ChainReaction/backend/internal/analysis/blast"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/graph"
+	"time"
 )
 
 type GraphService struct {
-	Graph graph.Repository
-	Scans interface {
+	Normalization *blast.Cache
+	Graph         graph.Repository
+	Scans         interface {
 		GetScan(context.Context, string) (domain.Scan, error)
 	}
 }
 
-func (s GraphService) ready(ctx context.Context, id string) error {
+var defaultNormalization blast.Cache
+
+func (s GraphService) ready(ctx context.Context, id string) (domain.Scan, error) {
 	scan, err := s.Scans.GetScan(ctx, id)
 	if err != nil {
-		return err
+		return scan, err
 	}
 	if scan.Status != "COMPLETED" {
-		return fmt.Errorf("SCAN_NOT_READY: scan is %s", scan.Status)
+		return scan, fmt.Errorf("SCAN_NOT_READY: scan is %s", scan.Status)
 	}
-	return nil
+	return scan, nil
 }
 func (s GraphService) GetGraph(ctx context.Context, id string) (map[string]any, error) {
-	if err := s.ready(ctx, id); err != nil {
+	if _, err := s.ready(ctx, id); err != nil {
 		return nil, err
 	}
 	return s.Graph.Graph(ctx, id)
 }
 func (s GraphService) GetPackage(ctx context.Context, scan, id string) (map[string]any, error) {
-	if err := s.ready(ctx, scan); err != nil {
+	if _, err := s.ready(ctx, scan); err != nil {
 		return nil, err
 	}
 	return s.Graph.Package(ctx, scan, id)
 }
-func (s GraphService) GetPaths(ctx context.Context, scan, id string, limit int) (domain.PathResult, error) {
-	if err := s.ready(ctx, scan); err != nil {
+func (s GraphService) GetImpact(ctx context.Context, scanID, packageID string, options domain.PathOptions) (domain.ImpactAnalysis, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	scan, err := s.ready(ctx, scanID)
+	if err != nil {
+		return domain.ImpactAnalysis{}, err
+	}
+	snapshot, err := s.Graph.Snapshot(ctx, scanID)
+	if err != nil {
+		return domain.ImpactAnalysis{}, err
+	}
+	result, err := blast.Analyze(snapshot, packageID, options)
+	if err != nil {
+		return domain.ImpactAnalysis{}, err
+	}
+	cache := s.Normalization
+	if cache == nil {
+		cache = &defaultNormalization
+	}
+	result.BlastRadius = cache.Score(ctx, scanID, snapshot, result, scan.Incomplete)
+	if scan.Incomplete {
+		result.EvidenceComplete = false
+		result.Paths.EvidenceComplete = false
+		result.Limitations = append(result.Limitations, "Dependency evidence is incomplete; structural counts are exact only for the persisted scan snapshot.")
+		result.Limitations = append(result.Limitations, scan.Limitations...)
+		result.Paths.Limitations = append(result.Paths.Limitations, "Dependency evidence is incomplete; paths reflect only the persisted scan snapshot.")
+	}
+	return result, nil
+}
+
+func (s GraphService) GetPaths(ctx context.Context, scanID, packageID string, options domain.PathOptions) (domain.PathResult, error) {
+	result, err := s.GetImpact(ctx, scanID, packageID, options)
+	if err != nil {
 		return domain.PathResult{}, err
 	}
-	if limit < 1 || limit > 100 {
-		return domain.PathResult{}, fmt.Errorf("INVALID_REQUEST: path limit must be between 1 and 100")
-	}
-	if _, err := s.Graph.Package(ctx, scan, id); err != nil {
-		return domain.PathResult{}, err
-	}
-	return s.Graph.Paths(ctx, scan, id, limit)
+	return result.Paths, nil
 }

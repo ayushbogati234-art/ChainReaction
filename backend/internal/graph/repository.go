@@ -11,5 +11,5 @@ type Repository interface {
 	Write(context.Context, string, domain.Graph) error
 	Graph(context.Context, string) (map[string]any, error)
 	Package(context.Context, string, string) (map[string]any, error)
-	Paths(context.Context, string, string, int) (domain.PathResult, error)
+	Snapshot(context.Context, string) (domain.TopologySnapshot, error)
 }

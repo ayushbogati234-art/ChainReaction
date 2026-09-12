@@ -33,7 +33,21 @@ type Graph struct {
 	Limitations []string
 }
 type PathResult struct {
-	Paths     [][]string `json:"paths"`
-	Truncated bool       `json:"truncated"`
-	Limit     int        `json:"limit"`
+	Paths              [][]string `json:"paths"`
+	PathLengths        []int      `json:"path_lengths"`
+	Applications       []string   `json:"applications"`
+	Truncated          bool       `json:"truncated"`
+	Limit              int        `json:"limit"`
+	TotalPaths         int        `json:"total_paths"`
+	CountExact         bool       `json:"count_exact"`
+	CountCapped        bool       `json:"count_capped"`
+	CountLimit         int        `json:"count_limit"`
+	MaximumDepth       int        `json:"maximum_depth"`
+	MaximumDepthExact  bool       `json:"maximum_depth_exact"`
+	MaxDepthLimit      int        `json:"max_depth_limit"`
+	DepthLimited       bool       `json:"depth_limited"`
+	CyclesDetected     bool       `json:"cycles_detected"`
+	EvidenceConfidence Confidence `json:"evidence_confidence"`
+	EvidenceComplete   bool       `json:"evidence_complete"`
+	Limitations        []string   `json:"limitations"`
 }

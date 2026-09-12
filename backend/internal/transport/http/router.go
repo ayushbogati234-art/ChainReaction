@@ -3,6 +3,7 @@ package httptransport
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/service"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/transport/http/handler"
@@ -100,18 +101,35 @@ func Router(projects service.ProjectService, scans service.ScanService, graph se
 		respond(w, 200, v)
 	})
 	r.Get("/api/v1/scans/{scan}/packages/{package}/paths", func(w http.ResponseWriter, q *http.Request) {
-		limit := 20
-		if x := q.URL.Query().Get("limit"); x != "" {
-			if v, e := strconv.Atoi(x); e == nil && v > 0 && v <= 100 {
-				limit = v
-			}
+		options, err := pathOptions(q)
+		if err != nil {
+			fail(w, 400, "INVALID_REQUEST", err.Error())
+			return
 		}
 		packageID, err := url.PathUnescape(chi.URLParam(q, "package"))
 		if err != nil {
 			fail(w, 400, "INVALID_REQUEST", "invalid package identifier")
 			return
 		}
-		v, e := graph.GetPaths(q.Context(), chi.URLParam(q, "scan"), packageID, limit)
+		v, e := graph.GetPaths(q.Context(), chi.URLParam(q, "scan"), packageID, options)
+		if e != nil {
+			notFound(w, e)
+			return
+		}
+		respond(w, 200, v)
+	})
+	r.Get("/api/v1/scans/{scan}/packages/{package}/impact", func(w http.ResponseWriter, q *http.Request) {
+		options, err := pathOptions(q)
+		if err != nil {
+			fail(w, 400, "INVALID_REQUEST", err.Error())
+			return
+		}
+		packageID, err := url.PathUnescape(chi.URLParam(q, "package"))
+		if err != nil {
+			fail(w, 400, "INVALID_REQUEST", "invalid package identifier")
+			return
+		}
+		v, e := graph.GetImpact(q.Context(), chi.URLParam(q, "scan"), packageID, options)
 		if e != nil {
 			notFound(w, e)
 			return
@@ -122,6 +140,29 @@ func Router(projects service.ProjectService, scans service.ScanService, graph se
 		handler.RegisterFindings(r, findings[0])
 	}
 	return r
+}
+func pathOptions(q *http.Request) (domain.PathOptions, error) {
+	result := domain.PathOptions{ApplicationID: q.URL.Query().Get("application_id")}
+	maxPaths := q.URL.Query().Get("max_paths")
+	if maxPaths == "" {
+		maxPaths = q.URL.Query().Get("limit")
+	}
+	values := []struct {
+		raw    string
+		target *int
+	}{{maxPaths, &result.MaxPaths}, {q.URL.Query().Get("max_depth"), &result.MaxDepth}}
+	for _, item := range values {
+		raw, target := item.raw, item.target
+		if raw == "" {
+			continue
+		}
+		value, err := strconv.Atoi(raw)
+		if err != nil {
+			return result, fmt.Errorf("path bounds must be integers")
+		}
+		*target = value
+	}
+	return result, nil
 }
 func respond(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)

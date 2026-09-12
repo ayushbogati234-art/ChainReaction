@@ -2,7 +2,6 @@ package neo4j
 
 import (
 	"context"
-	"fmt"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/graph"
 	neo "github.com/neo4j/neo4j-go-driver/v5/neo4j"
@@ -58,29 +57,28 @@ func (r Repository) Package(ctx context.Context, scan, id string) (map[string]an
 	}
 	return res.Record().AsMap(), res.Err()
 }
-func (r Repository) Paths(ctx context.Context, scan, id string, limit int) (domain.PathResult, error) {
-	if limit < 1 || limit > 100 {
-		return domain.PathResult{}, fmt.Errorf("INVALID_REQUEST: path limit must be between 1 and 100")
-	}
+func (r Repository) Snapshot(ctx context.Context, scan string) (domain.TopologySnapshot, error) {
 	s := r.Driver.NewSession(ctx, neo.SessionConfig{AccessMode: neo.AccessModeRead})
 	defer s.Close(ctx)
-	q := "MATCH p=(a:Application {scan_id:$scan})-[:DEPENDS_ON*1..]->(t:PackageVersion {scan_id:$scan,id:$id}) WHERE all(n IN nodes(p) WHERE n.scan_id=$scan AND single(m IN nodes(p) WHERE m=n)) RETURN [n IN nodes(p) | n.id] AS path LIMIT $limit"
-	res, e := s.Run(ctx, q, map[string]any{"scan": scan, "id": id, "limit": limit + 1})
-	if e != nil {
-		return domain.PathResult{}, e
+	out := domain.TopologySnapshot{Nodes: []domain.TopologyNode{}, Edges: []domain.TopologyEdge{}}
+	res, err := s.Run(ctx, "MATCH (n {scan_id:$scan}) WHERE n:Application OR n:PackageVersion RETURN n.id, CASE WHEN n:Application THEN 'application' ELSE 'package' END, coalesce(n.confidence,'LOW') ORDER BY n.id", map[string]any{"scan": scan})
+	if err != nil {
+		return out, err
 	}
-	out := domain.PathResult{Limit: limit, Paths: [][]string{}}
 	for res.Next(ctx) {
-		v := res.Record().Values[0].([]any)
-		p := make([]string, len(v))
-		for i, x := range v {
-			p[i] = x.(string)
-		}
-		if len(out.Paths) == limit {
-			out.Truncated = true
-			break
-		}
-		out.Paths = append(out.Paths, p)
+		values := res.Record().Values
+		out.Nodes = append(out.Nodes, domain.TopologyNode{ID: values[0].(string), Kind: values[1].(string), Confidence: domain.Confidence(values[2].(string))})
+	}
+	if err = res.Err(); err != nil {
+		return out, err
+	}
+	res, err = s.Run(ctx, "MATCH (a {scan_id:$scan})-[e:DEPENDS_ON]->(b {scan_id:$scan}) WHERE (a:Application OR a:PackageVersion) AND (b:Application OR b:PackageVersion) RETURN a.id,b.id,coalesce(e.confidence,'LOW') ORDER BY a.id,b.id", map[string]any{"scan": scan})
+	if err != nil {
+		return out, err
+	}
+	for res.Next(ctx) {
+		values := res.Record().Values
+		out.Edges = append(out.Edges, domain.TopologyEdge{From: values[0].(string), To: values[1].(string), Confidence: domain.Confidence(values[2].(string))})
 	}
 	return out, res.Err()
 }

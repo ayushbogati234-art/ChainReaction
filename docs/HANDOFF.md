@@ -1,114 +1,147 @@
 # ChainReaction project handoff
 
-Updated 2026-09-09 — Phase 2 implemented and verified for its documented supported
-matching subset; awaiting user review. Full project completion is not claimed.
+Updated 2026-09-11 — Phase 2 is closed out. Phase 3 graph metrics, path explorer
+extensions and UI integration are implemented and verified; the numeric Blast
+Radius score is approved and implemented with conservative availability. The project is not complete.
 
-## Authority and current scope
+## Authority and exact approved scope
 
 The [architecture blueprint](../ChainReaction-Architecture_Blueprint.md) remains
-the full product specification. Track coverage in [FEATURE_MATRIX.md](FEATURE_MATRIX.md),
-Phase 1 evidence in [ARCHITECTURE.md](ARCHITECTURE.md), and current work in
-[phases/PHASE_2.md](phases/PHASE_2.md). Do not edit the blueprint into a progress report.
+the complete product specification. Coverage is tracked in
+[FEATURE_MATRIX.md](FEATURE_MATRIX.md); phase evidence is in
+[Phase 1](ARCHITECTURE.md), [Phase 2](phases/PHASE_2.md), and
+[Phase 3](phases/PHASE_3.md). Do not replace or narrow the blueprint.
 
-The user explicitly authorized Phase 2: OSV vulnerability provider abstraction,
-exact validated Python package/version queries, preserved advisory evidence and
-alias deduplication, bounded requests, scan-scoped PostgreSQL snapshots/findings,
-Neo4j vulnerability relationships, repeat-safe processing, partial/degraded
-coverage, findings list/detail APIs and UI connected to package paths, separate
-dependency and vulnerability confidence, and deterministic/database/live tests.
-No scoring formulas, structural-criticality formulas, simulations, mitigation
-ranking, RRP, extra dependency formats or tox.ini parsing are authorized. Do not
-start Phase 3 automatically. Do not stage or commit without user permission.
+The current authorization is Phase 3 graph impact analysis: scan-isolated reverse
+reachability; unique immediate/transitive downstream packages and exposed apps;
+safe representative paths with application/max-path/max-depth filters, explicit
+count/depth bounds and cycle protection; package/finding UI evidence and graph
+overlays; tests; and the user-approved Blast Radius formula and availability policy. Phase 4 and other later
+features are not authorized. Do not stage or commit without explicit permission.
 
 ## Completed and unfinished
 
-Phase 1 graph/ingestion/provenance work is committed by the user and its evidence
-is preserved in ARCHITECTURE.md. Phase 2 code includes provider/domain/confidence
-modules, numeric-release OSV matching, alias groups, per-package coverage,
-migrations and snapshot/findings repositories, vulnerability graph writes,
-service/worker wiring, findings APIs and UI. Full blueprint matrix exists.
-Deterministic provider, database, live OSV/browser and graph regression checks
-passed; exact commands, scan IDs and gaps are in PHASE_2.md. API/setup docs and
-the feature matrix are updated. Next concrete implementation step: address the
-user's Phase 2 review findings; no further phase is authorized. Full PEP 440/custom
-sources, caching, full observability, all scoring/simulations/ranking and the full
-demo remain partial/deferred as recorded in FEATURE_MATRIX.md.
+Phase 2 is committed by the user at `a3c6798` and includes the inspector fix:
+package changes clear findings owned by another package, same-package findings are
+preserved, and stale detail responses are aborted and identity-checked. Both
+deterministic rapid/delayed-response and saved-scan regressions pass.
 
-## Architecture decisions and corrections
+Uncommitted Phase 3 work adds a typed Neo4j topology snapshot, pure
+`analysis/blast` reachability/path analysis, service completeness context, paths
+and impact APIs, and inspector/graph integration. It distinguishes exact snapshot
+reach counts from incomplete discovery, exact/capped path counts, displayed
+representatives and exact/observed-only maximum depth. The UI filters by synthetic
+or persisted application roots and keeps Cytoscape positions/viewport stable.
 
-Python-only analysis; Go/Next.js are implementation technologies. One root
-application with paired Poetry pyproject.toml + poetry.lock. Manifest supplies
-identity/direct declarations, lock supplies versions/package dependency evidence.
-Metadata-only scans never install or execute scanned code. Preserve all final
-blueprint capabilities even when deferred. Use the existing repository and
-prescribed module/file locations; consolidated Phase 1 files are accepted when
-boundaries remain correct. Domain is client-independent; services orchestrate;
-jobs own queue workflow; persistence and graph queries stay behind interfaces.
-Keep Cytoscape, dependent -> dependency arrows, stable inspection and dark UI.
-Phase 2 inspector correction: package selection owns the inspector; selecting a
-different package clears a finding from another package, while selecting a finding
-selects/preserves its own package. Finding requests are aborted and identity-checked
-against scan/finding/package so late details cannot restore stale content.
+The approved score is implemented in analysis/blast/normalize.go. It returns
+component evidence, full-scan totals, rounded classifications, and null scores
+with reason codes for incomplete evidence or inexact normalization. A bounded
+cache reuses scan-wide counts across clicks; path display/application filters do
+not affect scores. Execution and work limits protect both path traversals. Overall Risk Score, structural criticality, simulations,
+mitigation/RRP, Systemic Dependency, search/filters/modes, broader inputs/caches/
+observability and the full demo remain in FEATURE_MATRIX.
 
-## Git and files
+## Architecture decisions and user corrections
 
-Branch: main. Starting HEAD was 0b16c95. Current observed HEAD is the user's
-03fa2de (phases doumentations files add for context); preserve this new commit.
-Working tree was clean before this handoff. Uncommitted work includes the three
-progress documents; backend domain/vulnerability/confidence/service/handler/
-Postgres/Neo4j/migration additions, app/scan/router wiring; provider fixtures/tests
-and database regression extensions; frontend finding types/components/features
-and scan integration, README/API/architecture links and docs/openapi.json.
-The exact changed file inventory is in PHASE_2.md under Files and architectural
-boundaries. Git status is dirty (modified tracked files and new untracked Phase 2
-files), with an empty staged diff. Nothing staged/committed by this session.
-The blueprint is unchanged. Recheck `git status --short` before further work.
+Python-only analysis; Go/Next.js are implementation technology. Supported input
+remains paired root `pyproject.toml` + `poetry.lock`: manifest identity/direct
+declarations versus lock version/transitive evidence. `tox.ini` and broader inputs
+remain unsupported. Scans are metadata-only and never execute repository code.
 
-## Verification and gaps
+Use the existing monorepo and prescribed responsibility boundaries. Domain is
+client-independent; Neo4j owns scan-scoped persistence/query adaptation;
+`analysis/blast` owns algorithms; services orchestrate; HTTP parses/delegates;
+startup stays in app; jobs retain worker flow. Consolidated files are acceptable.
+Cytoscape, dependent → dependency direction, dark styling and inspector behavior
+are preserved. Reachability is exact only within the persisted snapshot; scan
+incompleteness is a separate evidence limitation. Never describe impact as
+confirmed exploitation or a numeric score as exploit probability.
 
-Previous Phase 1 evidence: backend tests, real database
-workflow with simulated GitHub archives, Docker build, Chromium graph/provenance
-checks and live public GitHub ingestion passed; exact commands/scan IDs in
-ARCHITECTURE.md. Last live scan b1a39eb6-6948-4ef5-8a35-04476ef1a4a6 had 48 nodes,
-75 edges, 123 limitations. Phase 2 `go test ./...`, `go test -race ./...`, `go vet
-./...`, frontend `npx tsc --noEmit --incremental false`, Docker build and real
-database integration passed. Provider fixture path and timeout-test counter race
-were fixed; reruns passed. Final focused service test passed for simultaneous
-provider/graph degradation. Live OSV requests@2.19.0 returned 10 matched records.
-Live browser scan 579acc06-c7c0-45c1-8bba-a5eb0002d2db of the same public Poetry
-example completed: 47/47 packages checked, 52 findings. Fixture browser checked
-missing severity/fixes and partial/degraded states; graph regression retained
-48 nodes/75 edges and stable interactions at narrow widths. OpenAPI JSON parses
-and 55 schema references resolve (not full external conformance verification).
-All exact commands and evidence are in PHASE_2.md. Full product demo
-including simulations/ranking remains unimplemented.
+## Files and Git state
 
-## Limitations, decisions, runtime
+Branch `main`; HEAD `a3c6798 (phase 2 completed)`, tracking `origin/main`. Current
+resume check found 34 staged files, with no new commit since the prior session.
+The existing staging was preserved. This handoff refresh is an unstaged change
+on top of the staged handoff; no staging or commit was performed during resume.
+Modified/new paths are listed in
+PHASE_3.md under “Files changed”; they are concentrated in:
 
-No current blocker for the tested local workflow. No Python environment selection
-or full dependency version-range/freshness validation;
-older scans lack newly recorded provenance. Deferred formulas, exploitability
-source, remediation model and deployment target require later decisions.
-Local UI http://localhost:3000, API :8080, PostgreSQL :5432, Neo4j :7474/:7687
-are running; PostgreSQL/Neo4j health checks passed. Verify with `docker compose ps`. Start/build with
-`docker compose up -d --build` from repository root. Use local `.env`; never put
-credentials here. Host database authentication differed from Compose previously;
-run integration tests on Compose network with `.env`. Temporary browser tooling
-is under /tmp/chainreaction-graph-browser-0TMQ3w and may need restoration after a
-restart. See PHASE_2.md for browser environment variables and database test command.
-Phase 2 uses public OSV without an API key. Matching is limited to numeric exact
-releases/default PyPI; skipped/failed/unqueried packages stay explicit. Provider
-pagination/outages and graph degradation are fixture-tested, not live outages.
-Large-scale behavior, distributed reconciliation and external OpenAPI conformance
-remain unverified. No automatic phase advance or publication is authorized.
+```text
+backend/internal/{domain,graph,analysis/blast,service,transport/http}
+backend/tests/integration_test.go
+frontend/src/{components,features,lib/graph,types}
+frontend/tests
+docs/{API.md,openapi.json,FEATURE_MATRIX.md,HANDOFF.md,phases}
+```
 
-The Phase 2 inspector consistency regression passed after rebuilding frontend:
-deterministic `frontend/tests/finding-selection.cjs` uses delayed black finding
-detail data and rapid black/attrs changes; persisted-scan
-`frontend/tests/finding-selection-live.cjs` passed the exact
-black@23.3.0/CVE-2024-21503 -> attrs@22.2.0 -> black -> paths sequence. Both show
-no stale detail/browser errors. TypeScript, diff check and frontend Docker build
-also passed. Current next step remains user review/follow-up fixes within Phase 2.
+No existing commit was rewritten, no Phase 2 file was discarded, the blueprint
+has no intended modification, and nothing should be staged until user review.
+Always recheck `git status --short` before handoff.
 
-Update this file at meaningful milestones and before context resets/handoffs,
-including exact verification outcomes, current Git state and next concrete step.
+Resume verification (2026-09-11): Git status/history and Docker Compose status
+were inspected. API/frontend/worker are running; PostgreSQL and Neo4j are healthy.
+The test evidence below is from 2026-09-10; tests were not rerun during resume.
+
+## Tests actually run and results
+
+On 2026-09-10:
+
+- `go test ./... -count=1` passed in Docker against real Compose PostgreSQL and
+  Neo4j with controlled GitHub/OSV fixtures and integration enabled. It includes
+  scan isolation, repeat-safe Phase 2 evidence and new impact API assertions.
+- `go test -race ./... -count=1` and `go vet ./...` passed locally with required
+  socket permission. Focused blast/graph/service/transport tests passed.
+- `npm exec tsc -- --noEmit --incremental false` passed from `frontend/`.
+- `docker compose up -d --build` passed, including Next.js production compilation.
+- Deterministic Chromium Phase 3 multi-app/diamond UI passed: exact counts and
+  lengths, depth, app filter, affected/path highlighting, stable graph,
+  finding linkage, 390px width and no browser errors.
+- Phase 2 deterministic browser selection/findings regressions passed.
+- Saved scan `579acc06-c7c0-45c1-8bba-a5eb0002d2db` for
+  `https://github.com/Hasenpfote/python-poetry-example` passed the real black
+  CVE → attrs → black → paths browser sequence. Its real graph regression retained
+  48 nodes/75 edges with zero measured overlap and stable responsive interactions.
+  Live impact for `black@23.3.0` returned 0 downstream packages, 1 exposed app and
+  1 exact depth-1 path; dependency evidence remains incomplete and is labelled so.
+- A fresh unmocked browser run of the same public repository completed scan
+  `24ade495-66ec-4766-9942-2daf7da3d328` at commit `f0e6e6b...`: 47/47 packages
+  checked, 53 current findings, real queue/worker/GitHub/OSV/databases and impact
+  inspection. Advisory counts are time-dependent.
+- OpenAPI JSON parsing passed. Third-party conformance and large-scale performance
+  testing remain gaps.
+
+The approved formula follow-up passed the full Go suite with real database
+integration, including an independent complete-evidence 70/HIGH HTTP fixture.
+Unit tests cover worked examples, empty/disconnected graphs, cycles/versions,
+incomplete/capped/depth/work/cancellation availability, cache invalidation,
+filter independence and rounding/bands. Focused race/vet, TypeScript and Docker
+build passed. Browser tests verified numeric components and filter independence;
+the saved live Poetry scan correctly showed Score unavailable with
+INCOMPLETE_DEPENDENCY_EVIDENCE. Exact evidence is in PHASE_3.md.
+
+One combined verification command accidentally invoked `npm exec tsc` from
+`backend/`, which fetched the unrelated deprecated npm `tsc` runner into npm's
+cache and failed. It created no repository file. The correct frontend command was
+then run and passed. This does not invalidate the independently passing Go race/vet.
+
+See PHASE_3.md for the precise distinction between deterministic fixtures, real
+databases, saved real-scan reads and the fresh unmocked workflow.
+
+## Runtime, limitations and next step
+
+The rebuilt stack is running at UI `http://localhost:3000`, API
+`http://localhost:8080`, PostgreSQL `:5432`, Neo4j HTTP `:7474` and Bolt `:7687`.
+Start/rebuild with `docker compose up -d --build`; inspect with
+`docker compose ps`. Use local `.env` without documenting secrets. External
+Playwright tooling currently exists under
+`/tmp/chainreaction-graph-browser-0TMQ3w` and is not a project dependency.
+
+Real repository ingestion still produces one application root; multi-application
+impact correctness is synthetic. Dependency environment/markers/extras/groups
+remain incomplete evidence. Path ordering is deterministic but not priority-
+ranked. Aggregate path cap is 1,000; display cap 100; depth cap 100; snapshot cap
+10k nodes/100k edges. Large graphs, SCC display, pagination, caching, full
+observability and external OpenAPI conformance are unverified/unimplemented.
+
+Next concrete step: user review of completed Phase 3 and its documented evidence.
+Do not begin Phase 4 or stage/commit without authorization.

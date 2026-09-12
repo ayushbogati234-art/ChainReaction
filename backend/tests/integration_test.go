@@ -175,6 +175,46 @@ func TestDatabaseWorkflow(t *testing.T) {
 	if len(paths.Paths) != 1 || strings.Join(paths.Paths[0], " -> ") != "app:chain -> a@1.0.0 -> b@2.0.0" {
 		t.Fatalf("wrong paths: %+v", paths)
 	}
+	if paths.TotalPaths != 1 || !paths.CountExact || paths.MaximumDepth != 2 || !paths.MaximumDepthExact || paths.PathLengths[0] != 2 {
+		t.Fatalf("missing exact path evidence: %+v", paths)
+	}
+	var impact domain.ImpactAnalysis
+	if err = json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/packages/b@2.0.0/impact?application_id=app%3Achain&max_paths=10&max_depth=10", nil, 200), &impact); err != nil {
+		t.Fatal(err)
+	}
+	if impact.DownstreamPackages != 1 || impact.ApplicationsExposed != 1 || len(impact.ImmediateDependentPackages) != 1 || impact.ImmediateDependentPackages[0] != "a@1.0.0" || impact.EvidenceComplete || impact.Paths.TotalPaths != 1 {
+		t.Fatalf("wrong isolated impact evidence: %+v", impact)
+	}
+	if impact.BlastRadius.Score != nil || impact.BlastRadius.ReasonCodes[0] != "INCOMPLETE_DEPENDENCY_EVIDENCE" {
+		t.Fatalf("incomplete score: %+v", impact.BlastRadius)
+	}
+	t.Run("CompleteSyntheticBlastRadius", func(t *testing.T) {
+		// A separate synthetic scan defines complete evidence directly; no
+		// resolver or live-repository limitations are removed.
+		synthetic := enqueue("synthetic-score")
+		g := domain.Graph{Application: domain.Package{ID: "app:synthetic", Name: "synthetic", Confidence: domain.ConfidenceHigh}, Packages: []domain.Package{{ID: "x@1", Name: "x", Version: "1", Confidence: domain.ConfidenceHigh}}, Edges: []domain.Edge{{From: "app:synthetic", To: "x@1", Confidence: "HIGH"}}}
+		if err := graph.Write(ctx, synthetic.ID, g); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(ctx, "UPDATE scans SET status='COMPLETED',incomplete=false,limitations='[]' WHERE id=$1", synthetic.ID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(ctx, "DELETE FROM scan_jobs WHERE scan_id=$1", synthetic.ID); err != nil {
+			t.Fatal(err)
+		}
+		var result domain.ImpactAnalysis
+		if err := json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+synthetic.ID+"/packages/x@1/impact?max_depth=1&max_paths=1", nil, 200), &result); err != nil {
+			t.Fatal(err)
+		}
+		if result.BlastRadius.Score == nil || *result.BlastRadius.Score != 70 || *result.BlastRadius.Classification != "HIGH" {
+			t.Fatalf("%+v", result.BlastRadius)
+		}
+		if result.Limitations == nil || result.Paths.Limitations == nil {
+			t.Fatal("complete-evidence UI requires empty arrays, not null limitations")
+		}
+	})
+	apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/packages/b@2.0.0/impact?application_id=app%3Aother", nil, 400)
+	apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/packages/b@2.0.0/paths?max_paths=bad", nil, 400)
 	changed := enqueue("provenance")
 	process(map[string][]byte{"pyproject.toml": fixture(t, "provenance/pyproject.toml"), "poetry.lock": fixture(t, "chain/poetry.lock")})
 	provenance := string(apiRequest(t, handler, "GET", "/api/v1/scans/"+changed.ID+"/graph", nil, 200))
@@ -195,8 +235,12 @@ func TestDatabaseWorkflow(t *testing.T) {
 	second := enqueue("other")
 	process(map[string][]byte{"pyproject.toml": fixture(t, "chain/pyproject.toml"), "poetry.lock": bytesReplace(fixture(t, "chain/poetry.lock"), "2.0.0", "3.0.0")})
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/packages/b@3.0.0", nil, 404)
+	apiRequest(t, handler, "GET", "/api/v1/scans/"+first.ID+"/packages/b@3.0.0/impact", nil, 404)
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+second.ID+"/packages/b@2.0.0", nil, 404)
 	apiRequest(t, handler, "GET", "/api/v1/scans/"+second.ID+"/packages/b@2.0.0/paths", nil, 404)
+	if err = json.Unmarshal(apiRequest(t, handler, "GET", "/api/v1/scans/"+second.ID+"/packages/b@3.0.0/impact", nil, 200), &impact); err != nil || impact.PackageID != "b@3.0.0" {
+		t.Fatalf("second scan impact isolation: %+v %v", impact, err)
+	}
 	t.Run("Phase2EvidencePersistence", func(t *testing.T) {
 		var down atomic.Bool
 		payload := fixture(t, "vulnerabilities/affected.json")

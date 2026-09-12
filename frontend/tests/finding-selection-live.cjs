@@ -20,6 +20,9 @@ const scanID=process.env.TEST_SCAN_ID || '579acc06-c7c0-45c1-8bba-a5eb0002d2db';
   assert.equal(await page.getByRole('region',{name:'Finding details'}).count(),0,'black finding remained after attrs selection');assert.equal(await black.getAttribute('aria-pressed'),'false');
   await black.click();await page.getByRole('region',{name:'Finding details'}).waitFor();await page.getByRole('button',{name:'Show dependency paths',exact:true}).click();await page.locator('.inspector .path').first().waitFor();
   assert.match(await page.locator('.inspector .path').first().innerText(),/black@23\.3\.0/);assert.deepEqual(errors,[]);
+  const score=page.getByRole('region',{name:'Blast Radius score',exact:true});
+  await score.waitFor();assert.match(await score.innerText(),/Score unavailable/);
+  assert.match(await score.innerText(),/INCOMPLETE_DEPENDENCY_EVIDENCE/);
   console.log(JSON.stringify({result:'PASS',scanID,sequence:'black CVE-2024-21503 -> attrs -> black -> paths'},null,2));
  }finally{await browser.close()}
 })().catch(error=>{console.error(error);process.exitCode=1});

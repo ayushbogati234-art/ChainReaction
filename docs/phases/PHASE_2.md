@@ -1,7 +1,8 @@
 # Phase 2 — vulnerability enrichment and evidence-backed findings
 
-Status: implemented and verified for the supported matching subset below;
-ready for user review. The full project is not complete. Full scope authority is the
+Status: closed out and verified for the supported matching subset below. The
+inspector consistency follow-up and regression are included in user commit
+`a3c6798`. The full project is not complete. Full scope authority is the
 [blueprint](../../ChainReaction-Architecture_Blueprint.md); coverage and remaining
 product work are in [FEATURE_MATRIX.md](../FEATURE_MATRIX.md). Preserve the
 [Phase 1 closeout](../ARCHITECTURE.md). See [HANDOFF.md](../HANDOFF.md) for current state.
@@ -270,9 +271,9 @@ end-to-end demo. Formulas, exploitability source, remediation strategy and
 deployment remain architect/user decisions. tox.ini and new input formats are
 unchanged and unapproved. No Phase 3 work was started.
 
-Next concrete step: user review of Phase 2 findings/coverage UI and this evidence;
-fix review findings within Phase 2, then seek explicit approval before staging,
-committing or beginning another phase.
+Phase 2 was closed out before authorized Phase 3 work began. Its supported
+matching scope and limitations remain unchanged. Phase 3 progress is recorded in
+[PHASE_3.md](PHASE_3.md); this historical evidence is not rewritten as Phase 3.
 
 Provider references consulted: [OSV query API](https://github.com/google/osv.dev/blob/master/docs/api/post-v1-query.md)
 and [OSV schema](https://ossf.github.io/osv-schema/). OSV query responses can be
