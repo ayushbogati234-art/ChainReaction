@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/analysis/blast"
+	"github.com/ayushbogati234-art/ChainReaction/backend/internal/analysis/criticality"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/domain"
 	"github.com/ayushbogati234-art/ChainReaction/backend/internal/graph"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 type GraphService struct {
 	Normalization *blast.Cache
+	Criticality   *criticality.Cache
 	Graph         graph.Repository
 	Scans         interface {
 		GetScan(context.Context, string) (domain.Scan, error)
@@ -18,6 +20,7 @@ type GraphService struct {
 }
 
 var defaultNormalization blast.Cache
+var defaultCriticality criticality.Cache
 
 func (s GraphService) ready(ctx context.Context, id string) (domain.Scan, error) {
 	scan, err := s.Scans.GetScan(ctx, id)
@@ -61,6 +64,11 @@ func (s GraphService) GetImpact(ctx context.Context, scanID, packageID string, o
 		cache = &defaultNormalization
 	}
 	result.BlastRadius = cache.Score(ctx, scanID, snapshot, result, scan.Incomplete)
+	criticalityCache := s.Criticality
+	if criticalityCache == nil {
+		criticalityCache = &defaultCriticality
+	}
+	result.StructuralCriticality = criticalityCache.Score(ctx, scanID, snapshot, result, scan.Incomplete)
 	if scan.Incomplete {
 		result.EvidenceComplete = false
 		result.Paths.EvidenceComplete = false

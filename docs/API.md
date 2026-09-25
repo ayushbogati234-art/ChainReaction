@@ -1,8 +1,8 @@
-# Phase 1–3 API
+# Phase 1–4 API
 
 Machine-readable contract: [OpenAPI 3.1](openapi.json). Phase evidence:
 [Phase 1](ARCHITECTURE.md), [Phase 2](phases/PHASE_2.md), and
-[Phase 3](phases/PHASE_3.md). Full product coverage
+[Phase 3](phases/PHASE_3.md), and [Phase 4](phases/PHASE_4.md). Full product coverage
 and deferred API endpoints remain in [FEATURE_MATRIX.md](FEATURE_MATRIX.md).
 
 All endpoints use JSON and require no authentication in the local prototype.
@@ -42,8 +42,9 @@ raw metadata, affected entries, supplied severity/CVSS, references and applicabl
 fixed-version evidence. Missing data stays absent/empty. CVSS vectors and labels
 are provider values, not calculated risk. Phase 3 impact counts are structural
 evidence. The approved scan-relative Blast Radius is returned as `blast_radius`
-on impact responses. No overall risk or structural-criticality score,
-simulations or ranking endpoints are available.
+on impact responses. The Phase 4 `structural_criticality` object is also returned
+on impact responses. No overall risk score, systemic-dependency finding,
+simulation or ranking endpoint is available.
 
 Errors use `{ "error": { "code": "...", "message": "..." } }`. Relevant codes include `UNSUPPORTED_INPUT`, `INVALID_REPOSITORY_URL`, `GITHUB_DOWNLOAD_ERROR`, and `REPOSITORY_FILE_TOO_LARGE`.
 
@@ -88,6 +89,19 @@ five-second service context. Scan normalization is reused in a bounded process
 cache keyed by scan ID, full topology fingerprint and dependency completeness.
 HIGH/VERY HIGH are scan-relative structural classifications, not vulnerability
 severity, exploitability or absolute business impact.
+
+`structural_criticality.score` is an integer 0–100 or null. It is calculated
+only from the complete scan topology: 30% reverse fan-in normalized to the
+scan maximum, 30% application reach, 20% shared-dependency concentration
+(direct dependents divided by all other graph nodes), and 20% logarithmically
+normalized distinct simple application-to-package paths. The latter is a
+cycle-safe path-count factor; it does not establish independent failures or
+disjoint paths. Components expose their numerators, denominators, normalized
+values, weights and point contributions. Scores are scan-relative and do not
+indicate a known vulnerability, CVSS severity, exploitability or business
+criticality. Scores are unavailable under the same incomplete/capped/work/depth
+evidence conditions as Blast Radius; `reason_codes` and `blocking_package`
+identify why. Path filters do not change the score.
 
 Worker failures persist error_code/error_message on the scan and terminal state
 on the job. WORKER_INTERRUPTED indicates an expired worker lease; a new scan can

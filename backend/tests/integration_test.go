@@ -188,6 +188,9 @@ func TestDatabaseWorkflow(t *testing.T) {
 	if impact.BlastRadius.Score != nil || impact.BlastRadius.ReasonCodes[0] != "INCOMPLETE_DEPENDENCY_EVIDENCE" {
 		t.Fatalf("incomplete score: %+v", impact.BlastRadius)
 	}
+	if impact.StructuralCriticality.Score != nil || impact.StructuralCriticality.ReasonCodes[0] != "INCOMPLETE_DEPENDENCY_EVIDENCE" {
+		t.Fatalf("incomplete criticality: %+v", impact.StructuralCriticality)
+	}
 	t.Run("CompleteSyntheticBlastRadius", func(t *testing.T) {
 		// A separate synthetic scan defines complete evidence directly; no
 		// resolver or live-repository limitations are removed.
@@ -208,6 +211,9 @@ func TestDatabaseWorkflow(t *testing.T) {
 		}
 		if result.BlastRadius.Score == nil || *result.BlastRadius.Score != 70 || *result.BlastRadius.Classification != "HIGH" {
 			t.Fatalf("%+v", result.BlastRadius)
+		}
+		if result.StructuralCriticality.Score == nil || *result.StructuralCriticality.Score != 100 {
+			t.Fatalf("%+v", result.StructuralCriticality)
 		}
 		if result.Limitations == nil || result.Paths.Limitations == nil {
 			t.Fatal("complete-evidence UI requires empty arrays, not null limitations")

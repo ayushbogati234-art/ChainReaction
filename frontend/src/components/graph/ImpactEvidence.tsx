@@ -4,6 +4,7 @@ import styles from "./GraphWorkspace.module.css";
 export function ImpactEvidence({impact,applicationID,onApplication,onPath,activePath}:{impact:Impact;applicationID:string;onApplication:(id:string)=>void;onPath:(path:string[])=>void;activePath?:string[]}) {
  const paths=impact.paths;
  const score=impact.blast_radius;
+ const criticality=impact.structural_criticality;
  const count=paths.count_capped ? paths.total_paths+"+" : String(paths.total_paths);
  return <section aria-label="Graph impact evidence">
   <h3>Potential impact</h3>
@@ -15,6 +16,15 @@ export function ImpactEvidence({impact,applicationID,onApplication,onPath,active
    {score.blocking_package && <p>Normalization blocked by package: {score.blocking_package}. This can prevent scoring other packages in the scan.</p>}
    {score.components && Object.entries(score.components).map(([name,c])=><p key={name}>{name.replaceAll("_"," ")}: {c.numerator.toFixed(4)} / {c.denominator.toFixed(4)} = {c.value.toFixed(4)} · weight {c.weight*100}% · contribution {c.contribution.toFixed(2)} points{name==="path_multiplicity"?" (numerator and denominator use ln(1 + path count))":""}</p>)}
    <p>HIGH / VERY HIGH does not establish vulnerability severity, exploitability, or absolute business impact. Bands are prototype product classifications. Compare scores only within this scan.</p>
+  </section>}
+  {criticality && <section aria-label="Structural Criticality score">
+   <h3>Structural Criticality — scan-relative topology score</h3>
+   <p>{criticality.score===null?"Score unavailable":criticality.score+"/100"}</p>
+   <p>Full scan: {criticality.total_applications} application roots · {criticality.total_packages} package versions.</p>
+   {criticality.reason_codes.map(reason=><p key={reason}>{reason}: {reason==="INCOMPLETE_DEPENDENCY_EVIDENCE"?"Dependency evidence is incomplete.":reason==="SCAN_PATH_COUNT_CAPPED"?"A path count is capped, so exact path concentration cannot be established.":"Exact topology normalization could not be established within analysis limits."}</p>)}
+   {criticality.blocking_package && <p>Normalization blocked by package: {criticality.blocking_package}.</p>}
+   {criticality.components && Object.entries(criticality.components).map(([name,c])=><p key={name}>{name.replaceAll("_"," ")}: {c.numerator.toFixed(4)} / {c.denominator.toFixed(4)} = {c.value.toFixed(4)} · weight {c.weight*100}% · contribution {c.contribution.toFixed(2)} points{name==="independent_path_concentration"?" (numerator and denominator use ln(1 + distinct simple path count))":""}</p>)}
+   <p>This is a structural project-relative score. It does not indicate a known vulnerability, severity, exploitability, business criticality, or a disjoint failure path.</p>
   </section>}
   <p><strong>{impact.applications_exposed}</strong> application root{impact.applications_exposed===1?"":"s"} potentially exposed · <strong>{impact.downstream_packages}</strong> downstream package{impact.downstream_packages===1?"":"s"}.</p>
   <p>{impact.immediate_dependent_packages.length} immediate · {impact.transitive_dependent_packages.length} transitive dependents. Counts are {impact.reachability_exact?"exact within this isolated scan snapshot":"bounded"}.</p>

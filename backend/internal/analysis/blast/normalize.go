@@ -23,6 +23,25 @@ type normalization struct {
 	Reason, Blocking                string
 }
 
+// ScanPathCounts exposes bounded, exact-or-unavailable scan-wide simple path
+// counts for other topology-only analysis packages. It never returns a lower
+// bound as an exact count.
+type ScanPathCounts struct {
+	Counts   map[string]int
+	Maximum  int
+	Reason   string
+	Blocking string
+}
+
+func CountPaths(ctx context.Context, snapshot domain.TopologySnapshot) ScanPathCounts {
+	n := normalizeScan(ctx, snapshot, MaximumWork, false)
+	counts := make(map[string]int, len(n.Counts))
+	for id, count := range n.Counts {
+		counts[id] = count
+	}
+	return ScanPathCounts{Counts: counts, Maximum: n.Maximum, Reason: n.Reason, Blocking: n.Blocking}
+}
+
 // Cache is bounded and scoped by scan identity and a fingerprint of its full
 // snapshot. Completed immutable snapshots reuse normalization across clicks.
 type Cache struct {

@@ -1201,6 +1201,9 @@
           },
           "blast_radius": {
             "$ref": "#/components/schemas/BlastRadius"
+          },
+          "structural_criticality": {
+            "$ref": "#/components/schemas/StructuralCriticality"
           }
         }
       },
@@ -1497,6 +1500,53 @@
                 "contribution": {
                   "type": "number"
                 }
+              }
+            }
+          }
+        }
+      },
+      "StructuralCriticality": {
+        "type": "object",
+        "description": "Scan-relative topology score. It is independent of advisories, CVSS, exploitability, and business criticality.",
+        "required": [
+          "score",
+          "reason_codes",
+          "total_applications",
+          "total_packages",
+          "components"
+        ],
+        "properties": {
+          "score": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "maximum": 100
+          },
+          "reason_codes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "INCOMPLETE_DEPENDENCY_EVIDENCE",
+                "SCAN_PATH_COUNT_CAPPED",
+                "SCAN_PATH_DEPTH_LIMIT",
+                "WORK_LIMIT",
+                "EXECUTION_LIMIT"
+              ]
+            }
+          },
+          "blocking_package": {"type": "string"},
+          "total_applications": {"type": "integer"},
+          "total_packages": {"type": "integer"},
+          "components": {
+            "type": ["object", "null"],
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "numerator": {"type": "number"},
+                "denominator": {"type": "number"},
+                "value": {"type": "number"},
+                "weight": {"type": "number"},
+                "contribution": {"type": "number"}
               }
             }
           }
