@@ -2,7 +2,7 @@
 
 Authority: [full blueprint](../ChainReaction-Architecture_Blueprint.md), preserved
 intact. Evidence: [P1](ARCHITECTURE.md), [P2](phases/PHASE_2.md),
-[P3](phases/PHASE_3.md). Current work:
+[P3](phases/PHASE_3.md), [P4](phases/PHASE_4.md). Current work:
 [handoff](HANDOFF.md). Status describes the stated row, not its whole section.
 `verified` means the cited bounded behavior was tested; `implemented` awaits
 verification; `partial` has explicit gaps; `not started` has no implementation.
@@ -21,7 +21,7 @@ its documented supported input/matching subset. Paths below are repository-relat
 |3.10,4.3|Complete representative paths; multiple branches|verified|analysis/blast/calculator.go; service/graph_service.go|Filtered path API and route highlighting|P3 diamond/shared-app/DB/browser|Displayed paths bounded independently from aggregate|P1/P3|
 |3.11|Maximum dependency depth as context, not danger score|verified|analysis/blast/calculator.go|Exact/bounded labels in API/UI|P3 unit/browser|Bounded maximum is explicitly observed-only|P3|
 |3.12–3.14,10.10,14|Blast reach, normalization, score, configurable weights and bands|verified|analysis/blast/{calculator,normalize}.go; phases/PHASE_3.md|Impact API and inspector score/components/totals/availability|P3 model/unit/real DB/browser verification|Approved formula implemented; null scores for incomplete/capped/work-limited evidence|P3|
-|3.15,10.9,16|Structural criticality: fan-in, betweenness, app reach, concentration, independent paths|not started|—|—|—|Formula/normalization pending|TBD|
+|3.15,10.9|Structural criticality: fan-in, app reach, concentration, distinct simple paths|implemented|internal/analysis/criticality; service/graph_service.go|Impact API and inspector|P4 unit/API/UI verification|Approved transparent weights; betweenness intentionally not in this prototype formula|P4|
 |3.16,38|Potential dependency exposure, no exploitability claims|verified|src/components/findings; features/scan|Evidence language/caveats|P1/P2 browser|No installation/exploitability claim|P1/P2|
 |3.17,10.13,23|Systemic Dependency findings without known CVEs|not started|—|—|—|Criticality/reach thresholds and complete coverage needed|TBD|
 |3.18,10.15,20|Mitigation Priority: RRP/risk/apps/practicality/fix availability ranking|not started|—|—|—|Ranking and practicality model pending|TBD|
@@ -37,7 +37,7 @@ its documented supported input/matching subset. Paths below are repository-relat
 |7,8,29|API/worker/Postgres queue/Neo4j separation and Docker Compose|verified|internal/app; jobs; persistence; graph|Async scans, sync reads|P1 real DB workflow|No production auth/deployment|P1|
 |9,10.1–10.7,10.9–10.10|Prescribed modules, startup-only wiring, pure domain, delegating handlers, interfaces|verified|cmd; app; service; transport; domain; graph; analysis/blast|Existing endpoints|P1 boundary audit + P3 mapping|Accepted consolidated files, no deferred stubs|P1/P2/P3|
 |10.8|Vulnerability provider abstraction and OSV adapter|verified|internal/vulnerability/provider.go; osv/{client,mapper}.go|Worker + findings|P2 provider fixtures/live OSV|Exact numeric Python releases/default PyPI only|P2|
-|10.11,16|Explainable Risk Score, severity/blast/criticality/exploitability components|not started|—|—|—|Formula, weights and exploitability source pending|TBD|
+|10.11,16|Explainable Risk Score, severity/blast/criticality/exploitability components|not started|—|—|—|Phase 5: formula, weights and exploitability source pending|P5|
 |10.14,18|Simulate Compromise assumption, reverse exposure, overlay, persistence|not started|—|—|—|No simulation authorization|TBD|
 |10.14,19|Simulate Remediation baseline/counterfactual/re-resolution distinction|not started|—|—|—|Risk-only vs real re-resolution decision pending|TBD|
 |11.1–11.2|Project creation, persisted queued scan, immediate response|verified|service; persistence/postgres; jobs|POST projects/scans|P1 separate DB observer|Queue retries not automatic|P1|
@@ -93,6 +93,6 @@ its documented supported input/matching subset. Paths below are repository-relat
 |37|Explicit non-goals: broad ecosystems, images/K8s/runtime/IDE/bots/chat/PRs/billing/SSO/cloud/exploits|verified|Scope boundaries|Absent|P1 code/scope review|Retained as non-goals, not missing implemented features|P1/P2|
 |38|Graph facts, explained scores, safe scans, async reads, pure domain/interfaces|partial|Existing layers|P1 workflow|P1|Deferred engines not implemented|P1/P2/TBD|
 |39|Approved root Python subset, Postgres queue, Neo4j/Cytoscape, Docker no-auth prototype|verified|Existing project|P1 workflow|P1|All later product features remain in specification|P1|
-|39|Blast normalization, criticality formula, exploitability source, remediation/deployment decisions|partial|—|—|—|Blast normalization approved in P3; remaining decisions still pending|TBD|
-|40|Explicit phase authorization; no silent architecture/scope substitutions|implemented|HANDOFF; phases docs; this matrix|—|User authorized P2/P3|Blast score approved and implemented; no automatic next phase|P2/P3|
+|39|Blast normalization, criticality formula, exploitability source, remediation/deployment decisions|partial|analysis/criticality|Impact API/UI component evidence|P4|Blast and criticality formulas approved; remaining decisions still pending|P3/P4|
+|40|Explicit phase authorization; no silent architecture/scope substitutions|implemented|HANDOFF; phases docs; this matrix|—|User authorized P2/P3/P4|Blast and criticality formulas approved; later phases require authorization|P2/P3/P4|
 |41|Final project completion via full blueprint and demo cross-check|not started|This tracking document|—|—|Whole product is not complete|TBD|

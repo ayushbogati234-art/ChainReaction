@@ -64,7 +64,7 @@ export default function ScanWorkspace() {
   return()=>abort.abort();
  },[scan?.id,selectedID,applicationID]);
  return <main>
-  <header><strong>ChainReaction</strong><span>Python dependency analysis</span><span className="phase">Phase 3 impact evidence</span></header>
+  <header><strong>ChainReaction</strong><span>Python dependency analysis</span><span className="phase">Phase 4 topology evidence</span></header>
   <section className="input">
    <form onSubmit={start}><label htmlFor="repo">Public GitHub repository<input id="repo" required value={url} onChange={e=>setURL(e.target.value)} placeholder="https://github.com/owner/repository"/></label><button disabled={submitting || running}>Start scan</button></form>
    {error && <p role="alert" className="failure">{error}</p>}
