@@ -1,8 +1,8 @@
 # ChainReaction project handoff
 
-Updated 2026-09-11 — Phase 2 is closed out. Phase 3 graph metrics, path explorer
-extensions and UI integration are implemented and verified; the numeric Blast
-Radius score is approved and implemented with conservative availability. The project is not complete.
+Updated 2026-09-21 — Phases 1–3 are closed out. Phase 4 structural criticality
+is implemented as a separate, topology-only score with conservative availability.
+The project is not complete.
 
 ## Authority and exact approved scope
 
@@ -12,12 +12,11 @@ the complete product specification. Coverage is tracked in
 [Phase 1](ARCHITECTURE.md), [Phase 2](phases/PHASE_2.md), and
 [Phase 3](phases/PHASE_3.md). Do not replace or narrow the blueprint.
 
-The current authorization is Phase 3 graph impact analysis: scan-isolated reverse
-reachability; unique immediate/transitive downstream packages and exposed apps;
-safe representative paths with application/max-path/max-depth filters, explicit
-count/depth bounds and cycle protection; package/finding UI evidence and graph
-overlays; tests; and the user-approved Blast Radius formula and availability policy. Phase 4 and other later
-features are not authorized. Do not stage or commit without explicit permission.
+The current authorization is Phase 4 structural criticality: transparent,
+scan-relative fan-in, application-reach, concentration and distinct-simple-path
+components; conservative score availability; impact API/UI evidence; tests; and
+the documentation phase split. Later phases remain unapproved. Do not stage or
+commit without explicit permission.
 
 ## Completed and unfinished
 
@@ -143,5 +142,6 @@ ranked. Aggregate path cap is 1,000; display cap 100; depth cap 100; snapshot ca
 10k nodes/100k edges. Large graphs, SCC display, pagination, caching, full
 observability and external OpenAPI conformance are unverified/unimplemented.
 
-Next concrete step: user review of completed Phase 3 and its documented evidence.
-Do not begin Phase 4 or stage/commit without authorization.
+Phase 4 is authorized and implemented. The next concrete step is user review of
+its documented evidence; Phase 5 and later phases require explicit authorization.
+Do not stage or commit without authorization.

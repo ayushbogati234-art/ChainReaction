@@ -1,6 +1,6 @@
 # ChainReaction
 
-ChainReaction is a local graph-first analyzer for public Python Poetry repositories. Phase 1 provides commit-pinned dependency graphs and paths; Phase 2 adds OSV enrichment and evidence-backed findings; Phase 3 adds scan-scoped reverse-reachability and bounded path evidence. Phase 3 includes the approved scan-relative Blast Radius score with conservative availability reasons. The full product specification remains the [architecture blueprint](ChainReaction-Architecture_Blueprint.md); track progress in the [feature matrix](docs/FEATURE_MATRIX.md), [Phase 3](docs/phases/PHASE_3.md), and [handoff](docs/HANDOFF.md).
+ChainReaction is a local graph-first analyzer for public Python Poetry repositories. Phase 1 provides commit-pinned dependency graphs and paths; Phase 2 adds OSV enrichment and evidence-backed findings; Phase 3 adds scan-scoped reverse-reachability and bounded path evidence; Phase 4 adds an explainable scan-relative structural-criticality score. The full product specification remains the [architecture blueprint](ChainReaction-Architecture_Blueprint.md); track progress in the [feature matrix](docs/FEATURE_MATRIX.md), [Phase 4](docs/phases/PHASE_4.md), and [handoff](docs/HANDOFF.md).
 
 ## Run locally
 
@@ -8,7 +8,7 @@ ChainReaction is a local graph-first analyzer for public Python Poetry repositor
 2. Run `docker compose up --build`.
 3. Open `http://localhost:3000` and submit a public repository with a supported root Poetry pair.
 
-The API is on `http://localhost:8080`; its Phase 1 contract is in [docs/API.md](docs/API.md).
+The API is on `http://localhost:8080`; its current contract is in [docs/API.md](docs/API.md).
 
 ## Supported Python subset
 
@@ -22,7 +22,7 @@ The analysis environment is deliberately non-selective in Phase 1: marker-bearin
 
 Repository ingestion uses GitHub metadata followed by a commit-SHA-pinned archive download. It applies HTTP timeouts, a 10 MiB archive response cap, and a 1 MiB selected-file cap. ChainReaction never clones, installs, builds, imports, or runs scanned repository code, tests, hooks, or scripts.
 
-PostgreSQL stores projects, scans, failures, a persisted job queue, package/advisory snapshots and findings. Neo4j stores scan-scoped dependencies and vulnerability relationships. Scores, simulations, mitigation, systemic detection, additional formats and multi-application discovery remain roadmap work.
+PostgreSQL stores projects, scans, failures, a persisted job queue, package/advisory snapshots and findings. Neo4j stores scan-scoped dependencies and vulnerability relationships. Overall risk scoring, simulations, mitigation, systemic detection, additional formats and multi-application discovery remain roadmap work.
 
 Phase 2 queries `https://api.osv.dev/v1/query` using validated default-PyPI package identities and exact numeric releases. Other version forms or custom sources are explicitly skipped. No OSV key is required. Requests have an 8-second timeout, a 4 MiB response cap, up to five pages, 200 ms spacing, and a 60-second per-scan enrichment budget. Rate-limit/unavailable responses stop further queries in that scan; coverage records explain what failed or was not queried. Create a new scan to retry; snapshots are not a cross-scan cache.
 
